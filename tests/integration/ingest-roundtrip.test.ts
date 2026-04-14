@@ -1,0 +1,74 @@
+/**
+ * Integration test: ingest one corpus file and verify it can be retrieved.
+ *
+ * Skipped automatically when PINECONE_API_KEY is not set.
+ * Run with real creds to execute against the live index.
+ */
+
+import { describe, it, expect } from "vitest";
+import { readFileSync } from "fs";
+import { resolve } from "path";
+import matter from "gray-matter";
+import { Pinecone } from "@pinecone-database/pinecone";
+import { chunkDocument } from "../../ingest/chunk";
+import { upsertChunks } from "../../ingest/upsert";
+import type { ChunkMetadata } from "../../shared/types";
+
+const hasCreds = Boolean(process.env["PINECONE_API_KEY"]);
+const indexName = process.env["PINECONE_INDEX"] ?? "";
+
+describe.skipIf(!hasCreds)("Ingest round-trip (requires Pinecone creds)", () => {
+  it(
+    "ingests ffiec-cat-domain-5.md and retrieves a known chunk",
+    async () => {
+      const apiKey = process.env["PINECONE_API_KEY"]!;
+      const pc = new Pinecone({ apiKey });
+
+      // Ingest the corpus file.
+      const corpusPath = resolve(process.cwd(), "corpus/ffiec-cat-domain-5.md");
+      const raw = readFileSync(corpusPath, "utf8");
+      const { data: frontMatter, content: markdownBody } = matter(raw);
+
+      const baseMetadata: Omit<ChunkMetadata, "headingPath" | "chunkIndex"> = {
+        title: String(frontMatter["title"]),
+        source: String(frontMatter["source"]),
+        citationId: String(frontMatter["citation_id"]),
+        jurisdiction: String(frontMatter["jurisdiction"]),
+        docType: String(frontMatter["doc_type"]),
+        effectiveDate: String(frontMatter["effective_date"]),
+        sourceUrl: String(frontMatter["source_url"]),
+      };
+
+      const chunks = chunkDocument(markdownBody, baseMetadata);
+      expect(chunks.length).toBeGreaterThan(0);
+
+      await upsertChunks(pc, indexName, chunks);
+
+      // Poll until the record is searchable (up to 5 attempts × 2 s).
+      const index = pc.index(indexName);
+      const knownSubstring = "cyber incident";
+      let topHitId: string | undefined;
+
+      for (let attempt = 0; attempt < 5; attempt++) {
+        await new Promise((r) => setTimeout(r, 2000));
+
+        const response = await index.searchRecords({
+          query: {
+            inputs: { text: knownSubstring },
+            topK: 3,
+          },
+        });
+
+        const hits = response.result?.hits ?? [];
+        if (hits.length > 0) {
+          topHitId = hits[0]._id;
+          break;
+        }
+      }
+
+      expect(topHitId).toBeDefined();
+      expect(topHitId).toMatch(/^FFIEC-CAT-Domain-5::chunk_/);
+    },
+    60_000 // 60 s timeout for network calls + polling
+  );
+});
