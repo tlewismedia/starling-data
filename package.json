@@ -12,7 +12,8 @@
     "ingest": "tsx scripts/ingest.ts",
     "test": "vitest run",
     "test:unit": "vitest run tests/unit",
-    "test:integration": "vitest run tests/integration"
+    "test:integration": "vitest run tests/integration",
+    "test:e2e": "playwright test"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.89.0",
@@ -37,7 +38,8 @@
     "tailwindcss": "^3.4.17",
     "tsx": "^4.21.0",
     "typescript": "^5.9.0",
-    "vitest": "^4.1.4"
+    "vitest": "^4.1.4",
+    "@playwright/test": "^1.50.0"
   },
   "packageManager": "pnpm@10.33.0"
 }
