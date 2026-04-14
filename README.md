@@ -45,7 +45,7 @@ Other useful commands:
 
 ```bash
 pnpm typecheck   # tsc --noEmit under strict: true
-pnpm lint        # next lint
+pnpm lint        # eslint .
 pnpm build       # production build
 pnpm format      # prettier --write .
 ```
