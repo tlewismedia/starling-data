@@ -8,7 +8,7 @@ Operational rules for every agent working in this repo.
 
 ## Principles
 
-1. **One agent, one job.** Subagents produce artifacts (specs, code, reviews). They do not decide workflow.
+1. **One agent, one job.** Subagents produce artifacts (code, reviews). They do not decide workflow.
 2. **The orchestrator owns all external state.** Only the main agent changes GitHub state (labels, issue open/close, PRs). Subagents post comments only.
 3. **Durable artifacts over chat.** Decisions live in GitHub issues, PRs, and commits — not in conversation history.
 4. **Human at the state transitions.** Humans confirm anything hard to reverse: posting a review, opening a PR, merging, closing.
@@ -21,6 +21,7 @@ Operational rules for every agent working in this repo.
 ### Orchestrator (main agent)
 
 The only actor that:
+
 - Creates, labels, and closes GitHub issues.
 - Opens and merges PRs.
 - Updates memory.
@@ -28,27 +29,16 @@ The only actor that:
 
 Reads: this file, `plan.md`, `project-goals.md`, the issue body, the relevant code.
 
-### Spec Writer (subagent)
-
-Invoked for **feature** work (not bugs). Produces a task spec as a comment on the issue, covering:
-- Scope (what's in, what's out).
-- Acceptance criteria (testable bullets).
-- Files likely to change.
-- Non-goals.
-
-Does not change code. Does not change issue state.
-
-Comment prefix: `[SPEC AGENT]`.
-
 ### Implementer (subagent)
 
-Invoked after the spec is approved (or directly for `bug`-labeled issues where the issue body *is* the spec).
+Invoked once the human has approved the issue body (which _is_ the spec — see [Specs live in the issue body](#specs-live-in-the-issue-body) below).
 
-Reads: issue + spec comment + `plan.md` + relevant code.
+Reads: issue body + `plan.md` + relevant code.
 
 Writes code and tests in a worktree branch.
 
 Rules:
+
 - Branch name: `issue-<N>/<short-description>`.
 - TypeScript only. No Python. No plain JS.
 - Write tests only when the spec asks for them.
@@ -65,6 +55,7 @@ Invoked after the implementer reports completion.
 Reads: the diff, the spec, `plan.md`.
 
 Checks:
+
 1. Does the code satisfy every acceptance criterion?
 2. Are the tests meaningful? Do they cover the spec's edge cases?
 3. Does anything contradict `plan.md` or `project-goals.md`?
@@ -86,46 +77,39 @@ Comment prefix: `[EVAL AGENT]`.
 
 ---
 
-## Workflow — feature
+## Specs live in the issue body
+
+There is no separate Spec Writer role. The orchestrator drafts the spec directly in the issue body (scope, acceptance criteria, non-goals, implementation notes). The human reads the issue before the implementer is dispatched — that's the spec-approval gate.
+
+Rationale: the orchestrator already holds the project context (`plan.md`, `project-goals.md`, prior issues). Dispatching a subagent to re-derive the spec from scratch adds round-trips, drift risk, and token cost without adding information. Writing the spec directly into the durable artifact (the issue) keeps specs tight and reviewable.
+
+If a spec genuinely needs research the orchestrator doesn't have (rare), the orchestrator does a narrow, one-off research dispatch and edits the findings into the issue body itself — not as a standing role.
+
+## Workflow
 
 ```
-1. Orchestrator      → creates issue, labels `spec-needed`
-2. Spec Writer       → posts spec, human reviews if asked
-3. Orchestrator      → labels `spec-ready` → `in-progress`
-4. Implementer       → writes code + tests in worktree
-5. Orchestrator      → labels `in-review`
-6. Reviewer          → posts APPROVED or NEEDS CHANGES (after human confirm)
-7a. If NEEDS CHANGES → back to step 4
-7b. If APPROVED      → orchestrator opens PR with `Closes #<N>`
-8. Human             → merges PR (auto-closes issue)
-```
-
-## Workflow — bug
-
-Bugs skip the spec writer. The issue body *is* the spec.
-
-```
-1. Orchestrator → creates issue, labels `bug`
-2. Implementer  → reads issue body + `plan.md`, writes fix + test
-3. Orchestrator → labels `in-review`
-4. Reviewer     → approves or requests changes
-5. Orchestrator → opens PR on approval
-6. Human        → merges
+1. Orchestrator → creates issue with spec in the body
+2. Human        → reads the issue body; approves or edits it
+3. Orchestrator → labels `in-progress`
+4. Implementer  → writes code + tests on a worktree branch
+5. Orchestrator → labels `in-review`
+6. Reviewer     → outputs APPROVED or NEEDS CHANGES
+7. Human        → confirms before the verdict is posted
+8a. If NEEDS CHANGES → back to step 4
+8b. If APPROVED      → orchestrator opens PR with `Closes #<N>`
+9. Human        → merges PR (auto-closes issue)
 ```
 
 ---
 
 ## Labels (workflow state machine)
 
-| Label | Meaning |
-|---|---|
-| `spec-needed` | New issue awaiting spec. |
-| `spec-ready` | Spec posted; ready for implementation. |
-| `in-progress` | Implementer working. |
-| `in-review` | Implementer done; reviewer running. |
-| `needs-changes` | Reviewer found issues. |
-| `approved` | Reviewer approved; PR open. |
-| `bug` | Skip spec-writer; issue body is the spec. |
+| Label           | Meaning                             |
+| --------------- | ----------------------------------- |
+| `in-progress`   | Implementer working.                |
+| `in-review`     | Implementer done; reviewer running. |
+| `needs-changes` | Reviewer found issues.              |
+| `approved`      | Reviewer approved; PR open.         |
 
 Only the orchestrator sets these.
 
@@ -143,11 +127,12 @@ Only the orchestrator sets these.
 ## What automation is OK, what needs confirmation
 
 **Auto-posted without asking:**
+
 - Progress comments (`Starting work…`, `Implementation complete`).
 - Label transitions (orchestrator only).
-- Spec drafts (they're clearly labeled and easy to revise).
 
 **Requires human confirmation before action:**
+
 - Posting a reviewer verdict.
 - Opening a PR.
 - Merging a PR.
@@ -171,42 +156,19 @@ Why: auto-actions that shape the record are hard to walk back. One confirmation 
 
 The orchestrator invokes subagents via the `Agent` tool with complete, self-contained prompts. Templates below.
 
-### Dispatching Spec Writer
-
-```javascript
-Agent({
-  description: "Write spec for issue #<N>",
-  subagent_type: "general-purpose",
-  prompt: `Read GitHub issue #<N> in tlewismedia/new-compliance-copilot.
-
-Context:
-- Goal: <state the goal>
-- Related: plan.md, agentic-strategy.md, relevant code
-
-Produce a spec comment covering:
-- Summary (1 sentence)
-- Scope (what will be done)
-- Acceptance Criteria (numbered, testable)
-- Files Likely to Change
-- Non-Goals
-- Implementation Notes
-
-Output as [SPEC AGENT] comment ready to post on the issue.
-Do not modify code or change issue state.`
-})
-```
-
 ### Dispatching Implementer
 
 ```javascript
 Agent({
   description: "Implement issue #<N>",
   subagent_type: "general-purpose",
-  prompt: `Read issue #<N> in tlewismedia/new-compliance-copilot and its [SPEC AGENT] comment.
+  prompt: `Read issue #<N> in tlewismedia/new-compliance-copilot — the body is the spec.
 
 Implement on a worktree branch named issue-<N>/<short-desc>.
 
-Spec summary: <paste the spec>
+Spec (paste the issue body verbatim):
+<paste the issue body>
+
 Acceptance Criteria:
 - <criterion 1>
 - <criterion 2>
@@ -218,8 +180,8 @@ Rules:
 - Do not change issue state or open a PR
 - Do not exceed spec scope
 
-Report back with: branch name, commit SHAs, one-paragraph summary, testing notes.`
-})
+Report back with: branch name, commit SHAs, one-paragraph summary, testing notes.`,
+});
 ```
 
 ### Dispatching Reviewer
@@ -230,7 +192,9 @@ Agent({
   subagent_type: "general-purpose",
   prompt: `Review the implementation on branch issue-<N>/<short-desc>.
 
-Spec: <paste the [SPEC AGENT] comment>
+Spec (paste the issue body verbatim):
+<paste the issue body>
+
 Acceptance Criteria:
 - <criterion 1>
 - <criterion 2>
@@ -242,8 +206,8 @@ Verify:
 4. No obvious bugs or security issues
 
 Output [REVIEWER AGENT] APPROVED or a numbered list of issues with file:line references.
-Do not post to GitHub; orchestrator will gate confirmation.`
-})
+Do not post to GitHub; orchestrator will gate confirmation.`,
+});
 ```
 
 ### Dispatch principles
@@ -253,7 +217,7 @@ From `agentic-strategy.md`:
 1. **Self-contained prompts.** Subagents start with zero context. Re-state goal, constraints, expected output.
 2. **Synthesise findings.** Never tell a subagent "based on the other agent's output, do X." Read the output, understand it, then decide what to ask.
 3. **Specific instructions.** Include file paths, line numbers, acceptance criteria — don't make the agent guess.
-4. **Parallelise independent work.** Multiple spec writers can run in parallel. Implementation and review must be serial.
+4. **Parallelise independent work.** Independent issues can run in parallel in separate worktrees. Implementation and review for the same issue must be serial.
 5. **Trust but verify.** Check the actual diff/code before accepting an agent's summary as complete.
 
 ---
@@ -261,10 +225,9 @@ From `agentic-strategy.md`:
 ## Memory
 
 The orchestrator maintains `memory/` across sessions. Memory captures:
+
 - User preferences confirmed or corrected ("this user prefers X").
 - Project decisions and their motivation ("we chose Pinecone on <date> because …").
 - External resource pointers ("eval dataset lives in …").
 
 Memory does **not** capture: code snippets, file paths, recent commits, git history (all derivable). See the memory skill docs for full rules.
-
-

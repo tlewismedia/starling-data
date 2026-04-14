@@ -8,14 +8,14 @@ Dispatch the Reviewer subagent for issue #$ARGUMENTS in `tlewismedia/new-complia
 Before dispatching:
 
 1. Identify the implementation branch: `issue-$ARGUMENTS/<short-desc>`.
-2. Fetch the `[SPEC AGENT]` comment from the issue via the GitHub MCP.
+2. Fetch the issue body via the GitHub MCP — the body is the spec.
 3. Pull the diff (`git diff main...issue-$ARGUMENTS/<short-desc>`) so you can pre-load it into the subagent's prompt.
 4. Confirm the test suite passes locally — a Reviewer `APPROVED` on a red suite is worthless (`agentic-strategy.md`).
 
 Invoke the Reviewer via the `Agent` tool using the dispatch template in `agents.md` (`Dispatching Reviewer`). The prompt must include:
 
 - The branch name.
-- The full spec text.
+- The full issue body (which is the spec).
 - The acceptance criteria as a numbered checklist.
 - The diff (or instructions to read it from the branch).
 - The test-run output.
