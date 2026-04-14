@@ -2,6 +2,7 @@
 name: Implementer
 description: Implements features and fixes based on specifications
 subagent_type: general-purpose
+model: opus
 isolation: worktree
 ---
 

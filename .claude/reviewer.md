@@ -2,6 +2,7 @@
 name: Reviewer
 description: Reviews code against specifications
 subagent_type: general-purpose
+model: sonnet
 ---
 
 # Reviewer Agent
