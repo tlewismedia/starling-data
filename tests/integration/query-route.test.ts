@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 
-describe.skipIf(!process.env.PINECONE_API_KEY || !process.env.ANTHROPIC_API_KEY)(
+describe.skipIf(!process.env.PINECONE_API_KEY || !process.env.OPENAI_API_KEY)(
   "/api/query route integration",
   () => {
     it("returns answer and citations for a compliance question", async () => {

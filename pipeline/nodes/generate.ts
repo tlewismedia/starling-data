@@ -1,4 +1,4 @@
-import Anthropic from "@anthropic-ai/sdk";
+import OpenAI from "openai";
 import type { GraphState } from "../state";
 import type { Citation } from "../../shared/types";
 
@@ -8,12 +8,20 @@ If the provided chunks are empty or do not contain sufficient information to ans
 respond with exactly: "I cannot answer from the available sources."
 Never fabricate information or cite sources not provided to you.`;
 
+const MODEL = "gpt-4o-mini";
+
 function formatContext(state: GraphState): string {
   if (state.retrievals.length === 0) {
     return "(No source chunks available.)";
   }
   return state.retrievals
-    .map((r, i) => `[^${i + 1}] ${r.text}`)
+    .map((r, i) => {
+      const m = r.metadata;
+      const header = m
+        ? `[^${i + 1}] ${m.citationId} — ${m.title}${m.headingPath ? ` (${m.headingPath})` : ""}`
+        : `[^${i + 1}]`;
+      return `${header}\n${r.text}`;
+    })
     .join("\n\n");
 }
 
@@ -36,20 +44,21 @@ function parseCitations(answer: string, state: GraphState): Citation[] {
     }));
 }
 
-export function createGenerateNode(anthropic: Anthropic) {
+export function createGenerateNode(openai: OpenAI) {
   return async (state: GraphState): Promise<Partial<GraphState>> => {
     const context = formatContext(state);
     const userContent = `Source chunks:\n\n${context}\n\nQuestion: ${state.query}`;
 
-    const response = await anthropic.messages.create({
-      model: "claude-haiku-4-5-20251001",
+    const response = await openai.chat.completions.create({
+      model: MODEL,
       max_tokens: 1024,
-      system: SYSTEM_PROMPT,
-      messages: [{ role: "user", content: userContent }],
+      messages: [
+        { role: "system", content: SYSTEM_PROMPT },
+        { role: "user", content: userContent },
+      ],
     });
 
-    const textBlock = response.content.find((b) => b.type === "text");
-    const answer = textBlock && textBlock.type === "text" ? textBlock.text : "";
+    const answer = response.choices[0]?.message?.content ?? "";
 
     const citations = parseCitations(answer, state);
 

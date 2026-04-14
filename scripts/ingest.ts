@@ -10,6 +10,7 @@
  *   PINECONE_INDEX     – the name of your integrated-embedding index
  */
 
+import "dotenv/config";
 import { readFileSync, readdirSync } from "fs";
 import { join, resolve } from "path";
 import matter from "gray-matter";

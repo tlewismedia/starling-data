@@ -20,7 +20,7 @@ const BATCH_SIZE = 100;
  */
 type PineconeIngestRecord = {
   id: string;
-  text: string;
+  chunk_text: string;
   title: string;
   source: string;
   citation_id: string;
@@ -37,7 +37,7 @@ function chunkToRecord(chunk: Chunk): PineconeIngestRecord {
   const m = chunk.metadata;
   return {
     id: chunk.id,
-    text: chunk.text,
+    chunk_text: chunk.text,
     title: m.title,
     source: m.source,
     citation_id: m.citationId,

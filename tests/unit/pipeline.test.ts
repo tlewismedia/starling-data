@@ -26,19 +26,25 @@ function makeVectorStoreMock(hits: object[]) {
   };
 }
 
-function makeAnthropicMock(answerText: string) {
+function makeOpenAIMock(answerText: string) {
   return {
-    messages: {
-      create: vi.fn().mockResolvedValue({
-        id: "msg_test",
-        type: "message",
-        role: "assistant",
-        content: [{ type: "text", text: answerText }],
-        model: "claude-haiku-4-5-20251001",
-        stop_reason: "end_turn",
-        stop_sequence: null,
-        usage: { input_tokens: 10, output_tokens: 20 },
-      }),
+    chat: {
+      completions: {
+        create: vi.fn().mockResolvedValue({
+          id: "chatcmpl_test",
+          object: "chat.completion",
+          created: 0,
+          model: "gpt-4o-mini",
+          choices: [
+            {
+              index: 0,
+              message: { role: "assistant", content: answerText },
+              finish_reason: "stop",
+            },
+          ],
+          usage: { prompt_tokens: 10, completion_tokens: 20, total_tokens: 30 },
+        }),
+      },
     },
   };
 }
@@ -50,8 +56,8 @@ function makeAnthropicMock(answerText: string) {
 describe("retrieve node", () => {
   it("maps hits correctly to Retrieval objects", async () => {
     const fakeHits = [
-      { _id: "chunk-1", _score: 0.92, fields: { text: "First chunk text." } },
-      { _id: "chunk-2", _score: 0.85, fields: { text: "Second chunk text." } },
+      { _id: "chunk-1", _score: 0.92, fields: { chunk_text: "First chunk text." } },
+      { _id: "chunk-2", _score: 0.85, fields: { chunk_text: "Second chunk text." } },
     ];
 
     const vectorStore = makeVectorStoreMock(fakeHits);
@@ -91,16 +97,16 @@ describe("generate node", () => {
     const retrievals = [
       { chunkId: "chunk-1", text: "Creditors must disclose APR.", score: 0.9 },
     ];
-    const anthropic = makeAnthropicMock("The APR must be disclosed. [^1]");
+    const openai = makeOpenAIMock("The APR must be disclosed. [^1]");
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const generateNode = createGenerateNode(anthropic as any);
+    const generateNode = createGenerateNode(openai as any);
     const state = makeState({ retrievals });
 
     await generateNode(state);
 
-    const call = anthropic.messages.create.mock.calls[0][0];
-    const userContent = call.messages[0].content as string;
-    expect(userContent).toContain("Creditors must disclose APR.");
+    const call = openai.chat.completions.create.mock.calls[0][0];
+    const userMessage = call.messages.find((m: { role: string }) => m.role === "user");
+    expect(userMessage.content).toContain("Creditors must disclose APR.");
   });
 
   it("parses citation markers from the answer and builds Citation objects", async () => {
@@ -108,9 +114,9 @@ describe("generate node", () => {
       { chunkId: "chunk-A", text: "First source text.", score: 0.95 },
       { chunkId: "chunk-B", text: "Second source text.", score: 0.88 },
     ];
-    const anthropic = makeAnthropicMock("See [^1] and [^2].");
+    const openai = makeOpenAIMock("See [^1] and [^2].");
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const generateNode = createGenerateNode(anthropic as any);
+    const generateNode = createGenerateNode(openai as any);
     const state = makeState({ retrievals });
 
     const result = await generateNode(state);
@@ -124,9 +130,9 @@ describe("generate node", () => {
 
   it("handles empty retrievals gracefully", async () => {
     const cannotAnswerText = "I cannot answer from the available sources.";
-    const anthropic = makeAnthropicMock(cannotAnswerText);
+    const openai = makeOpenAIMock(cannotAnswerText);
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const generateNode = createGenerateNode(anthropic as any);
+    const generateNode = createGenerateNode(openai as any);
     const state = makeState({ retrievals: [] });
 
     const result = await generateNode(state);

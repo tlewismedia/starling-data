@@ -8,15 +8,12 @@ importers:
 
   .:
     dependencies:
-      '@anthropic-ai/sdk':
-        specifier: ^0.89.0
-        version: 0.89.0(zod@4.3.6)
       '@langchain/core':
         specifier: ^1.1.39
-        version: 1.1.39
+        version: 1.1.39(openai@6.34.0(zod@4.3.6))
       '@langchain/langgraph':
         specifier: ^1.2.8
-        version: 1.2.8(@langchain/core@1.1.39)(react-dom@19.2.5(react@19.2.5))(react@19.2.5)(zod@4.3.6)
+        version: 1.2.8(@langchain/core@1.1.39(openai@6.34.0(zod@4.3.6)))(react-dom@19.2.5(react@19.2.5))(react@19.2.5)(zod@4.3.6)
       '@pinecone-database/pinecone':
         specifier: ^7.2.0
         version: 7.2.0
@@ -26,6 +23,9 @@ importers:
       next:
         specifier: 16.2.3
         version: 16.2.3(@babel/core@7.29.0)(@playwright/test@1.59.1)(react-dom@19.2.5(react@19.2.5))(react@19.2.5)
+      openai:
+        specifier: ^6.0.0
+        version: 6.34.0(zod@4.3.6)
       react:
         specifier: 19.2.5
         version: 19.2.5
@@ -48,6 +48,9 @@ importers:
       autoprefixer:
         specifier: ^10.4.20
         version: 10.5.0(postcss@8.5.9)
+      dotenv:
+        specifier: ^17.4.2
+        version: 17.4.2
       eslint:
         specifier: ^9.0.0
         version: 9.39.4(jiti@1.21.7)
@@ -81,15 +84,6 @@ packages:
   '@alloc/quick-lru@5.2.0':
     resolution: {integrity: sha512-UrcABB+4bUrFABwbluTIBErXwvbsU/V7TZWfmbgJfbkwiBuziS9gxdODUyuiecfdGQ85jglMW6juS3+z5TsKLw==}
     engines: {node: '>=10'}
-
-  '@anthropic-ai/sdk@0.89.0':
-    resolution: {integrity: sha512-nyGau0zex62EpU91hsHa0zod973YEoiMgzWZ9hC55WdiOLrE4AGpcg4wXI7lFqtvMLqMcLfewQU9sHgQB6psow==}
-    hasBin: true
-    peerDependencies:
-      zod: ^3.25.0 || ^4.0.0
-    peerDependenciesMeta:
-      zod:
-        optional: true
 
   '@babel/code-frame@7.29.0':
     resolution: {integrity: sha512-9NhCeYjq9+3uxgdtp20LSiJXJvN0FeCtNGpJxuMFZ1Kv3cWUNb6DOhJwUvcVCzKGR66cw4njwM6hrJLqgOwbcw==}
@@ -145,10 +139,6 @@ packages:
     resolution: {integrity: sha512-4GgRzy/+fsBa72/RZVJmGKPmZu9Byn8o4MoLpmNe1m8ZfYnz5emHLQz3U4gLud6Zwl0RZIcgiLD7Uq7ySFuDLA==}
     engines: {node: '>=6.0.0'}
     hasBin: true
-
-  '@babel/runtime@7.29.2':
-    resolution: {integrity: sha512-JiDShH45zKHWyGe4ZNVRrCjBz8Nh9TMmZG1kh4QTK8hCBTWBi8Da+i7s1fJw7/lYpM4ccepSNfqzZ/QvABBi5g==}
-    engines: {node: '>=6.9.0'}
 
   '@babel/template@7.28.6':
     resolution: {integrity: sha512-YA6Ma2KsCdGb+WC6UpBVFJGXL58MDA6oyONbjyF/+5sBgxY/dwkhLogbMT2GXXyU84/IhRw/2D1Os1B/giz+BQ==}
@@ -1286,6 +1276,10 @@ packages:
     resolution: {integrity: sha512-35mSku4ZXK0vfCuHEDAwt55dg2jNajHZ1odvF+8SSr82EsZY4QmXfuWso8oEd8zRhVObSN18aM0CjSdoBX7zIw==}
     engines: {node: '>=0.10.0'}
 
+  dotenv@17.4.2:
+    resolution: {integrity: sha512-nI4U3TottKAcAD9LLud4Cb7b2QztQMUEfHbvhTH09bqXTxnSie8WnjPALV/WMCrJZ6UV/qHJ6L03OqO3LcdYZw==}
+    engines: {node: '>=12'}
+
   dunder-proto@1.0.1:
     resolution: {integrity: sha512-KIN/nDJBQRcXw0MLVhZE9iQHmG68qAVIBg9CqmUYjmQIhgij9U5MFvrqkUL5FbtyyzZuOeOt0zdeRe4UY7ct+A==}
     engines: {node: '>= 0.4'}
@@ -1822,10 +1816,6 @@ packages:
   json-buffer@3.0.1:
     resolution: {integrity: sha512-4bV5BfR2mqfQTJm+V5tPPdf+ZpuhiIvTuAB5g8kcrXOZpTT/QwwVRWBywX1ozr6lEuPdbHxwaJlm9G6mI2sfSQ==}
 
-  json-schema-to-ts@3.1.1:
-    resolution: {integrity: sha512-+DWg8jCJG2TEnpy7kOm/7/AxaYoaRbjVB4LFZLySZlWn8exGs3A4OLJR966cVvU26N7X9TWxl+Jsw7dzAqKT6g==}
-    engines: {node: '>=16'}
-
   json-schema-traverse@0.4.1:
     resolution: {integrity: sha512-xbbCH5dCYU5T8LcEhhuh7HJ88HXuW3qsI3Y0zOZFKfZEHcpWiHU/Jxzk629Brsab/mMiHQti9wMP+845RPe3Vg==}
 
@@ -2096,6 +2086,18 @@ packages:
 
   obug@2.1.1:
     resolution: {integrity: sha512-uTqF9MuPraAQ+IsnPf366RG4cP9RtUi7MLO1N3KEc+wb0a6yKpeL0lmk2IB1jY5KHPAlTc6T/JRdC/YqxHNwkQ==}
+
+  openai@6.34.0:
+    resolution: {integrity: sha512-yEr2jdGf4tVFYG6ohmr3pF6VJuveP0EA/sS8TBx+4Eq5NT10alu5zg2dmxMXMgqpihRDQlFGpRt2XwsGj+Fyxw==}
+    hasBin: true
+    peerDependencies:
+      ws: ^8.18.0
+      zod: ^3.25 || ^4.0
+    peerDependenciesMeta:
+      ws:
+        optional: true
+      zod:
+        optional: true
 
   optionator@0.9.4:
     resolution: {integrity: sha512-6IpQ7mKUxRcZNLIObR0hz7lxsapSSIYNZJwXPGeF0mTVqGKFIXj1DQcMoT22S3ROcLyY/rz0PWaWZ9ayWmad9g==}
@@ -2497,9 +2499,6 @@ packages:
     resolution: {integrity: sha512-65P7iz6X5yEr1cwcgvQxbbIw7Uk3gOy5dIdtZ4rDveLqhrdJP+Li/Hx6tyK0NEb+2GCyneCMJiGqrADCSNk8sQ==}
     engines: {node: '>=8.0'}
 
-  ts-algebra@2.0.0:
-    resolution: {integrity: sha512-FPAhNPFMrkwz76P7cdjdmiShwMynZYN6SgOujD1urY4oNm80Ou9oMdmbR45LotcKOXoy7wSmHkRFE6Mxbrhefw==}
-
   ts-api-utils@2.5.0:
     resolution: {integrity: sha512-OJ/ibxhPlqrMM0UiNHJ/0CKQkoKF243/AEmplt3qpRgkW8VG7IfOS41h7V8TjITqdByHzrjcS/2si+y4lIh8NA==}
     engines: {node: '>=18.12'}
@@ -2720,12 +2719,6 @@ snapshots:
 
   '@alloc/quick-lru@5.2.0': {}
 
-  '@anthropic-ai/sdk@0.89.0(zod@4.3.6)':
-    dependencies:
-      json-schema-to-ts: 3.1.1
-    optionalDependencies:
-      zod: 4.3.6
-
   '@babel/code-frame@7.29.0':
     dependencies:
       '@babel/helper-validator-identifier': 7.28.5
@@ -2802,8 +2795,6 @@ snapshots:
   '@babel/parser@7.29.2':
     dependencies:
       '@babel/types': 7.29.0
-
-  '@babel/runtime@7.29.2': {}
 
   '@babel/template@7.28.6':
     dependencies:
@@ -3097,7 +3088,7 @@ snapshots:
       '@jridgewell/resolve-uri': 3.1.2
       '@jridgewell/sourcemap-codec': 1.5.5
 
-  '@langchain/core@1.1.39':
+  '@langchain/core@1.1.39(openai@6.34.0(zod@4.3.6))':
     dependencies:
       '@cfworker/json-schema': 4.1.1
       '@standard-schema/spec': 1.1.0
@@ -3105,7 +3096,7 @@ snapshots:
       camelcase: 6.3.0
       decamelize: 1.2.0
       js-tiktoken: 1.0.21
-      langsmith: 0.5.19
+      langsmith: 0.5.19(openai@6.34.0(zod@4.3.6))
       mustache: 4.2.0
       p-queue: 6.6.2
       uuid: 11.1.0
@@ -3117,27 +3108,27 @@ snapshots:
       - openai
       - ws
 
-  '@langchain/langgraph-checkpoint@1.0.1(@langchain/core@1.1.39)':
+  '@langchain/langgraph-checkpoint@1.0.1(@langchain/core@1.1.39(openai@6.34.0(zod@4.3.6)))':
     dependencies:
-      '@langchain/core': 1.1.39
+      '@langchain/core': 1.1.39(openai@6.34.0(zod@4.3.6))
       uuid: 10.0.0
 
-  '@langchain/langgraph-sdk@1.8.8(@langchain/core@1.1.39)(react-dom@19.2.5(react@19.2.5))(react@19.2.5)':
+  '@langchain/langgraph-sdk@1.8.8(@langchain/core@1.1.39(openai@6.34.0(zod@4.3.6)))(react-dom@19.2.5(react@19.2.5))(react@19.2.5)':
     dependencies:
       '@types/json-schema': 7.0.15
       p-queue: 9.1.2
       p-retry: 7.1.1
       uuid: 13.0.0
     optionalDependencies:
-      '@langchain/core': 1.1.39
+      '@langchain/core': 1.1.39(openai@6.34.0(zod@4.3.6))
       react: 19.2.5
       react-dom: 19.2.5(react@19.2.5)
 
-  '@langchain/langgraph@1.2.8(@langchain/core@1.1.39)(react-dom@19.2.5(react@19.2.5))(react@19.2.5)(zod@4.3.6)':
+  '@langchain/langgraph@1.2.8(@langchain/core@1.1.39(openai@6.34.0(zod@4.3.6)))(react-dom@19.2.5(react@19.2.5))(react@19.2.5)(zod@4.3.6)':
     dependencies:
-      '@langchain/core': 1.1.39
-      '@langchain/langgraph-checkpoint': 1.0.1(@langchain/core@1.1.39)
-      '@langchain/langgraph-sdk': 1.8.8(@langchain/core@1.1.39)(react-dom@19.2.5(react@19.2.5))(react@19.2.5)
+      '@langchain/core': 1.1.39(openai@6.34.0(zod@4.3.6))
+      '@langchain/langgraph-checkpoint': 1.0.1(@langchain/core@1.1.39(openai@6.34.0(zod@4.3.6)))
+      '@langchain/langgraph-sdk': 1.8.8(@langchain/core@1.1.39(openai@6.34.0(zod@4.3.6)))(react-dom@19.2.5(react@19.2.5))(react@19.2.5)
       '@standard-schema/spec': 1.1.0
       uuid: 10.0.0
       zod: 4.3.6
@@ -3771,6 +3762,8 @@ snapshots:
   doctrine@2.1.0:
     dependencies:
       esutils: 2.0.3
+
+  dotenv@17.4.2: {}
 
   dunder-proto@1.0.1:
     dependencies:
@@ -4475,11 +4468,6 @@ snapshots:
 
   json-buffer@3.0.1: {}
 
-  json-schema-to-ts@3.1.1:
-    dependencies:
-      '@babel/runtime': 7.29.2
-      ts-algebra: 2.0.0
-
   json-schema-traverse@0.4.1: {}
 
   json-stable-stringify-without-jsonify@1.0.1: {}
@@ -4503,10 +4491,12 @@ snapshots:
 
   kind-of@6.0.3: {}
 
-  langsmith@0.5.19:
+  langsmith@0.5.19(openai@6.34.0(zod@4.3.6)):
     dependencies:
       p-queue: 6.6.2
       uuid: 10.0.0
+    optionalDependencies:
+      openai: 6.34.0(zod@4.3.6)
 
   language-subtag-registry@0.3.23: {}
 
@@ -4706,6 +4696,10 @@ snapshots:
       es-object-atoms: 1.1.1
 
   obug@2.1.1: {}
+
+  openai@6.34.0(zod@4.3.6):
+    optionalDependencies:
+      zod: 4.3.6
 
   optionator@0.9.4:
     dependencies:
@@ -5190,8 +5184,6 @@ snapshots:
   to-regex-range@5.0.1:
     dependencies:
       is-number: 7.0.0
-
-  ts-algebra@2.0.0: {}
 
   ts-api-utils@2.5.0(typescript@5.9.3):
     dependencies:
