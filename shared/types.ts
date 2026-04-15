@@ -11,6 +11,7 @@ export interface ChunkMetadata {
   readonly source: string;
   readonly authority: "SEC" | "FINRA" | "MSRB" | "FinCEN" | "Kestrel";
   readonly citationId: string;
+  readonly citationIdDisplay: string;
   readonly jurisdiction: "US-Federal" | "SRO" | "Internal";
   readonly docType:
     | "regulation"
