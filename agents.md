@@ -129,11 +129,11 @@ Only the orchestrator sets these.
 
 - Progress comments (`Starting work…`, `Implementation complete`).
 - Label transitions (orchestrator only).
+- Reviewer verdict as a GitHub comment.
 - Opening a PR after reviewer APPROVED (so the human can review the diff in GitHub).
 
 **Requires human confirmation before action:**
 
-- Posting a reviewer verdict as a GitHub comment.
 - Merging a PR.
 - Closing an issue.
 - Deleting branches.
