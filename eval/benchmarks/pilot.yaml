@@ -1,0 +1,66 @@
+# Pilot eval benchmark — 10 hand-labeled items.
+#
+# Schema (per eval-pilot-plan.md):
+#   - query: natural-language question, written in user voice
+#     expected_chunk_ids: list of chunk IDs that should appear in top-K retrieval
+#     notes: free-text — what the item is testing
+#
+# Chunk ID format (see ingest/ARCHITECTURE.md):
+#   Regulatory (SEC/FINRA/MSRB):  ${citationId}::${paragraphPath}::p${N}
+#   Fallback   (FinCEN/Kestrel):  ${citationId}::${headingSlug}[::p${N}]
+#
+# Run `pnpm verify-eval` to confirm every expected_chunk_id below actually
+# exists in the chunker output. The verifier prints near-misses so wrong IDs
+# can be patched without re-grepping by hand.
+
+- query: "When can a broker-dealer skip the locate requirement for a short sale?"
+  expected_chunk_ids:
+    - "17-CFR-242.203::(b)(2)::p0"
+  notes: "Definitional. Bona-fide market making exception under Reg SHO Rule 203(b)(2)."
+
+- query: "How often do we have to do the regular and rigorous best-ex review, and what factors does it need to cover?"
+  expected_chunk_ids:
+    - "FINRA-Rule-5310::.02::p0"
+  notes: "Procedural + synthesis. Quarterly minimum, eight enumerated factors, segmentation by security/order-type/order-size."
+
+- query: "What's the lowest our net capital can go after we pay a dividend out to the parent?"
+  expected_chunk_ids:
+    - "17-CFR-240.15c3-1::(c)::p0"
+  notes: "Numeric threshold. 120% of minimum, 25% of haircuts, 10x AI ratio."
+
+- query: "What documents count for verifying a new individual customer's identity under the CIP rule?"
+  expected_chunk_ids:
+    - "31-CFR-Part-1023::1023.220-customer-identification-program-cip-.-a-minimum-requirements.-3-verification."
+  notes: "Definitional. Documentary (driver's license, passport) vs non-documentary (CRA, public DB) methods. FinCEN docs use the fallback chunker → heading-slug IDs."
+
+- query: "If we have a fail-to-deliver on a short sale, by when do we have to close it out — and is it different for long sales?"
+  expected_chunk_ids:
+    - "17-CFR-242.204::(a)::p0"
+  notes: "Procedural + threshold. T+1 for shorts, T+3 for longs/bona-fide MM."
+
+- query: "Does the surprise exam under the custody rule actually need to be a surprise, or can our auditor schedule it like the financial audit?"
+  expected_chunk_ids:
+    - "17-CFR-275.206(4)-2::(a)::p0"
+    - "17-CFR-275.206(4)-2::(d)::p0"
+  notes: "Procedural. Annual, no prior notice, irregular year-to-year. (a) is the rule itself; (d) is the explicit timing section. Tied to Kestrel Advisors SEC exam finding."
+
+- query: "How often do branch offices need to be inspected under FINRA 3110?"
+  expected_chunk_ids:
+    - "FINRA-Rule-3110::rule-3110.-supervision-c-internal-inspections.-1-inspection-cycles."
+  notes: "Procedural + numeric. Annual for OSJ/supervisory branches, every 3 years for non-supervisory. FINRA's matcher only recognises .NN markers, so (c)(1)-style sub-paragraphs land on the heading-slug fallback."
+
+- query: "What pre-trade controls does the market access rule require us to have in place?"
+  expected_chunk_ids:
+    - "17-CFR-240.15c3-5::market-access.-c-required-controls.-c-2-regulatory-risk-management-controls."
+  notes: "Procedural synthesis. Six categories: restricted-list, Reg SHO locate, Rule 201, halts, surveillance, access controls. The chunker captures only one paragraph marker per heading line, so (c)(2)-style headings land on the heading-slug fallback."
+
+- query: "What best-ex factors does Kestrel's policy require us to weigh, and is anything in there beyond what FINRA requires?"
+  expected_chunk_ids:
+    - "Kestrel-Best-Execution-Policy::kestrel-best-execution-policy-2.-the-best-execution-standard"
+  notes: "Internal policy + reg cross-ref. PFOF/internalization elevated as explicit factor 6 above Rule 5310(a) baseline."
+
+- query: "What did the best-ex committee decide about Venue A in Q1 2026, and why didn't they reroute?"
+  expected_chunk_ids:
+    - "Kestrel-Best-Ex-Committee-Minutes-Q1-2026::kestrel-best-execution-committee-q1-2026-meeting-minutes-3.-q4-2025-regular-and-rigorous-review"
+    - "Kestrel-Best-Execution-Policy::kestrel-best-execution-policy-4.-regular-and-rigorous-review-4.4-alert-thresholds"
+  notes: "Hard / cross-doc synthesis. Venue A PI down ~15% YoY but below the material-PI-deterioration threshold in policy §4.4."

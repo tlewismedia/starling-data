@@ -241,7 +241,7 @@ describe("Invariant 5: no-header document produces at least one chunk", () => {
 
   it("chunks from a no-header document have correct IDs", () => {
     const chunks = chunkDocument(FIXTURE_NO_HEADERS, BASE_METADATA);
-    expect(chunks[0].id).toBe("TEST-DOC::chunk_0");
+    expect(chunks[0].id).toBe("TEST-DOC::section");
   });
 });
 

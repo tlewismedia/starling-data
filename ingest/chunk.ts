@@ -7,7 +7,8 @@
  *    recognises paragraph markers in the body — (a), (1), (i) for CFR-style
  *    regulations and .01-.99 for FINRA Supplementary Material — and emits
  *    one chunk per terminal paragraph. Chunk IDs are
- *    `${citationId}::${paragraphPath}::p${N}`.
+ *    `${citationId}::${paragraphPath}::p${N}`. When a frame has no detected
+ *    paragraph marker, the ID falls back to the heading-slug form below.
  *
  *  - **Fallback mode** (everything else, including `Kestrel` and `FinCEN`):
  *    the original H1/H2/H3 + sentence-packing logic. Chunk IDs use a
@@ -129,6 +130,22 @@ function slugifyHeadingPath(path: string): string {
     .replace(/^-+|-+$/g, "");
 }
 
+/**
+ * Resolve a de-duplicated slug for a heading path, mutating the supplied
+ * collision map. First use returns the raw slug; subsequent uses append
+ * -2, -3, … in emission order. Empty heading paths fall back to "section".
+ */
+function resolveSlug(
+  headingPath: string,
+  slugCounts: Map<string, number>
+): string {
+  const raw =
+    headingPath.length > 0 ? slugifyHeadingPath(headingPath) : "section";
+  const count = slugCounts.get(raw) ?? 0;
+  slugCounts.set(raw, count + 1);
+  return count === 0 ? raw : `${raw}-${count + 1}`;
+}
+
 // ---------------------------------------------------------------------------
 // Fallback mode: H1/H2/H3 + sentence-packing (Kestrel, FinCEN, unknown)
 // ---------------------------------------------------------------------------
@@ -189,18 +206,6 @@ function chunkFallback(
   // Per-doc collision tracking: slug → count of times already used.
   const slugCounts = new Map<string, number>();
 
-  /**
-   * Resolve the de-duplicated slug for a given heading path.
-   * First use: return the raw slug unchanged.
-   * Subsequent uses: append -2, -3, … in emission order.
-   */
-  function resolveSlug(headingPath: string): string {
-    const raw = headingPath.length > 0 ? slugifyHeadingPath(headingPath) : "section";
-    const count = slugCounts.get(raw) ?? 0;
-    slugCounts.set(raw, count + 1);
-    return count === 0 ? raw : `${raw}-${count + 1}`;
-  }
-
   for (const section of sections) {
     if (section.body.trim().length === 0) continue;
 
@@ -209,7 +214,7 @@ function chunkFallback(
 
     // Resolve the slug once per section (so all chunks in the same heading
     // scope share the same base slug, disambiguated by ::p0, ::p1, …).
-    const slug = resolveSlug(section.headingPath);
+    const slug = resolveSlug(section.headingPath, slugCounts);
     const multiChunk = packedChunks.filter((t) => t.trim().length > 0).length > 1;
 
     let sectionChunkIndex = 0;
@@ -236,7 +241,7 @@ function chunkFallback(
   }
 
   if (chunks.length === 0 && body.trim().length > 0) {
-    const slug = slugifyHeadingPath("section");
+    const slug = resolveSlug("", slugCounts);
     const chunkMetadata: ChunkMetadata = {
       ...metadata,
       headingPath: "",
@@ -458,12 +463,28 @@ function chunkRegulatory(
   const chunks: Chunk[] = [];
   let globalIndex = 0;
 
+  // Per-doc collision tracking for the heading-slug fallback (used when a
+  // frame has no detected paragraph marker — e.g. FINRA rule bodies whose
+  // sub-paragraphs aren't .NN-style, or SEC headings like `### (c)(2) ...`
+  // where the matcher captures only the first marker on the line).
+  const slugCounts = new Map<string, number>();
+
+  // Resolve a slug once per frame so all chunks in the same frame share a
+  // base ID, disambiguated by ::p0, ::p1, ….
+  const slugByFrame = new Map<ParagraphFrame, string>();
+  for (const frame of frames) {
+    if (frame.paragraphPath.length === 0) {
+      slugByFrame.set(frame, resolveSlug(frame.headingPath, slugCounts));
+    }
+  }
+
   for (const frame of frames) {
     const text = frame.lines.join("\n").trim();
     if (text.length === 0) continue;
 
     const sentences = splitSentences(text);
     const packed = packSentencesIntoChunks(sentences);
+    const multiChunk = packed.filter((t) => t.trim().length > 0).length > 1;
 
     for (let i = 0; i < packed.length; i++) {
       const chunkText = packed[i];
@@ -476,10 +497,15 @@ function chunkRegulatory(
         chunkIndex: globalIndex,
       };
 
-      const id =
-        frame.paragraphPath.length > 0
-          ? `${metadata.citationId}::${frame.paragraphPath}::p${i}`
-          : `${metadata.citationId}::chunk_${globalIndex}`;
+      let id: string;
+      if (frame.paragraphPath.length > 0) {
+        id = `${metadata.citationId}::${frame.paragraphPath}::p${i}`;
+      } else {
+        const slug = slugByFrame.get(frame)!;
+        id = multiChunk
+          ? `${metadata.citationId}::${slug}::p${i}`
+          : `${metadata.citationId}::${slug}`;
+      }
 
       chunks.push({ id, text: chunkText, metadata: chunkMetadata });
       globalIndex++;
@@ -487,8 +513,9 @@ function chunkRegulatory(
   }
 
   if (chunks.length === 0 && body.trim().length > 0) {
+    const slug = resolveSlug("", slugCounts);
     chunks.push({
-      id: `${metadata.citationId}::chunk_0`,
+      id: `${metadata.citationId}::${slug}`,
       text: body.trim(),
       metadata: {
         ...metadata,
