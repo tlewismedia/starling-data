@@ -11,6 +11,8 @@
 #               chunks, in the model's voice with the rule citation inline.
 #               Not scored today — sits ready for LLM-as-judge or
 #               embedding-similarity comparison.
+#     category: one of {Direct fact, Spanning, Comparative, Numerical,
+#               Relationship, Holistic} — used for slicing scores by question type
 #     notes: free-text — what the item is testing
 #
 # Chunk ID format (see ingest/ARCHITECTURE.md):
@@ -21,6 +23,7 @@
 # expected_chunk_id still resolves.
 
 - query: "When can a broker-dealer skip the locate requirement for a short sale?"
+  category: Direct fact
   expected_chunk_ids:
     - "17-CFR-242.203::(b)(2)::p0"
   keywords:
@@ -35,6 +38,7 @@
   notes: "Definitional. Bona-fide market making exception under Reg SHO Rule 203(b)(2)."
 
 - query: "How often do we have to do the regular and rigorous best-ex review, and what factors does it need to cover?"
+  category: Spanning
   expected_chunk_ids:
     - "FINRA-Rule-5310::.02::p0"
   keywords:
@@ -52,6 +56,7 @@
   notes: "Procedural + synthesis. Quarterly minimum, eight enumerated factors, segmentation by security/order-type/order-size."
 
 - query: "What's the lowest our net capital can go after we pay a dividend out to the parent?"
+  category: Numerical
   expected_chunk_ids:
     - "17-CFR-240.15c3-1::(c)::p0"
   keywords:
@@ -68,6 +73,7 @@
   notes: "Numeric threshold. 120% of minimum, 25% of haircuts, 10x AI ratio."
 
 - query: "What documents count for verifying a new individual customer's identity under the CIP rule?"
+  category: Direct fact
   expected_chunk_ids:
     - "31-CFR-Part-1023::1023.220-customer-identification-program-cip-.-a-minimum-requirements.-3-verification."
   keywords:
@@ -84,6 +90,7 @@
   notes: "Definitional. Documentary (driver's license, passport) vs non-documentary (CRA, public DB) methods. FinCEN docs use the fallback chunker → heading-slug IDs."
 
 - query: "If we have a fail-to-deliver on a short sale, by when do we have to close it out — and is it different for long sales?"
+  category: Comparative
   expected_chunk_ids:
     - "17-CFR-242.204::(a)::p0"
   keywords:
@@ -101,6 +108,7 @@
   notes: "Procedural + threshold. T+1 for shorts, T+3 for longs/bona-fide MM."
 
 - query: "Does the surprise exam under the custody rule actually need to be a surprise, or can our auditor schedule it like the financial audit?"
+  category: Direct fact
   expected_chunk_ids:
     - "17-CFR-275.206(4)-2::(a)::p0"
     - "17-CFR-275.206(4)-2::(d)::p0"
@@ -118,6 +126,7 @@
   notes: "Procedural. Annual, no prior notice, irregular year-to-year. (a) is the rule itself; (d) is the explicit timing section. Tied to Kestrel Advisors SEC exam finding."
 
 - query: "How often do branch offices need to be inspected under FINRA 3110?"
+  category: Comparative
   expected_chunk_ids:
     - "FINRA-Rule-3110::rule-3110.-supervision-c-internal-inspections.-1-inspection-cycles."
   keywords:
@@ -135,6 +144,7 @@
   notes: "Procedural + numeric. Annual for OSJ/supervisory branches, every 3 years for non-supervisory. FINRA's matcher only recognises .NN markers, so (c)(1)-style sub-paragraphs land on the heading-slug fallback."
 
 - query: "What pre-trade controls does the market access rule require us to have in place?"
+  category: Direct fact
   expected_chunk_ids:
     - "17-CFR-240.15c3-5::market-access.-c-required-controls.-c-2-regulatory-risk-management-controls."
   keywords:
@@ -154,6 +164,7 @@
   notes: "Procedural synthesis. Six categories: restricted-list, Reg SHO locate, Rule 201, halts, surveillance, access controls. The chunker captures only one paragraph marker per heading line, so (c)(2)-style headings land on the heading-slug fallback."
 
 - query: "What best-ex factors does Kestrel's policy require us to weigh, and is anything in there beyond what FINRA requires?"
+  category: Relationship
   expected_chunk_ids:
     - "Kestrel-Best-Execution-Policy::kestrel-best-execution-policy-2.-the-best-execution-standard"
   keywords:
@@ -171,6 +182,7 @@
   notes: "Internal policy + reg cross-ref. PFOF/internalization elevated as explicit factor 6 above Rule 5310(a) baseline."
 
 - query: "What did the best-ex committee decide about Venue A in Q1 2026, and why didn't they reroute?"
+  category: Holistic
   expected_chunk_ids:
     - "Kestrel-Best-Ex-Committee-Minutes-Q1-2026::kestrel-best-execution-committee-q1-2026-meeting-minutes-3.-q4-2025-regular-and-rigorous-review"
     - "Kestrel-Best-Execution-Policy::kestrel-best-execution-policy-4.-regular-and-rigorous-review-4.4-alert-thresholds"
@@ -192,3 +204,387 @@
     the committee instead approved enhanced monthly monitoring of that
     segment through Q1 2026.
   notes: "Hard / cross-doc synthesis. Venue A PI down ~15% YoY but below the material-PI-deterioration threshold in policy §4.4."
+
+- query: "What information do we need to collect from access persons in their quarterly personal-trading reports?"
+  category: Direct fact
+  expected_chunk_ids:
+    - "17-CFR-275.204A-1::(b)(2)::p0"
+  keywords:
+    - "30 days"
+    - "calendar quarter"
+    - "CUSIP"
+    - "broker or bank"
+  reference_answer: |
+    Under Advisers Act Rule 204A-1(b)(2), the access person's quarterly
+    transaction report is due within 30 days after the end of each calendar
+    quarter and must cover all reportable-security transactions, identifying
+    the date, title and type (with CUSIP and ticker), nature of the
+    transaction, the price, and the broker or bank that effected it.
+  notes: "Direct list lookup from the quarterly-report subsection of the Code of Ethics rule."
+
+- query: "Can we show a gross-return figure in an ad without also showing net returns?"
+  category: Direct fact
+  expected_chunk_ids:
+    - "17-CFR-275.206(4)-1::(d)::p0"
+  keywords:
+    - "equal prominence"
+    - "same time period"
+    - "same methodology"
+    - "comparison"
+  reference_answer: |
+    No. Under the Marketing Rule (17 CFR 275.206(4)-1(d)), an advertisement
+    may not present gross performance unless it also presents net performance
+    with at least equal prominence, in a format designed to facilitate
+    comparison, and calculated over the same time period using the same
+    methodology.
+  notes: "Direct fact / yes-no with conditions. Marketing Rule gross-vs-net pairing."
+
+- query: "If we're acting as agent on both sides of a cross trade between two of our clients, what consent and disclosures does the rule require?"
+  category: Relationship
+  expected_chunk_ids:
+    - "15-USC-80b-6::(d)::p0"
+  keywords:
+    - "blanket prospective"
+    - "annual statement"
+    - "source and amount"
+    - "agent"
+    - "not as principal"
+  reference_answer: |
+    Under Advisers Act Section 206(3) and Rule 206(3)-2, the agency-cross
+    safe harbor requires written client consent (which may be a blanket
+    prospective consent), an annual statement to the client identifying
+    cross transactions and the source and amount of any compensation, a
+    transaction confirmation showing the source and amount of compensation,
+    and that the adviser act only as agent (not as principal) to either side.
+  notes: "Relationship. Section 206 antifraud + Rule 206(3)-2 safe harbor — adviser-as-agent versus adviser-as-principal."
+
+- query: "What did the AWC enforcement action identify as the deficiencies in the firm's best-ex review process?"
+  category: Holistic
+  expected_chunk_ids:
+    - "FINRA-AWC-2023056789201::finra-office-of-hearing-officers-iv.-facts-and-violative-conduct-a.-rule-5310-best-execution"
+  keywords:
+    - "Rule 605"
+    - "security-by-security"
+    - "order-size"
+    - "payment for order flow"
+    - "boilerplate"
+  reference_answer: |
+    The AWC found the firm violated FINRA Rule 5310 because its best-execution
+    committee relied on aggregate Rule 605 statistics from the receiving
+    venues without analyzing its own customer order flow on a security-by-
+    security, order-type, and order-size basis, did not compare execution
+    quality across venues, did not evaluate whether payment-for-order-flow
+    influenced routing, and did not document substantive findings beyond a
+    boilerplate "acceptable execution quality" conclusion.
+  notes: "Holistic / enforcement-doc synthesis. Mirrors the deficiencies cited in the Kestrel FINRA exam letter."
+
+- query: "What specific meetings and reviews must the FINRA Rule 3130 CEO certification document?"
+  category: Spanning
+  expected_chunk_ids:
+    - "FINRA-Rule-3130::rule-3130.-annual-certification-of-compliance-and-supervisory-processes.-c-form-and-content-of-certification."
+  keywords:
+    - "preceding 12 months"
+    - "chief compliance officer"
+    - "evidenced in a report"
+    - "board of directors"
+    - "audit committee"
+  reference_answer: |
+    Under FINRA Rule 3130(c), the CEO must certify in writing that the firm
+    has the required compliance and supervisory processes in place; that the
+    CEO held one or more meetings with the chief compliance officer in the
+    preceding 12 months to discuss those processes and the matters in
+    paragraph (c)(2); that the processes are evidenced in a report reviewed
+    by the CEO and CCO; and that the report has been submitted to the board
+    of directors and audit committee.
+  notes: "Spanning. Multi-clause certification — meetings, reviews, evidencing report, escalation path."
+
+- query: "What does Kestrel do if it can't verify a customer's identity at account opening under CIP?"
+  category: Direct fact
+  expected_chunk_ids:
+    - "Kestrel-AML-Program::kestrel-aml-program-3.-customer-identification-program-cip-3.3-failure-to-verify"
+  keywords:
+    - "restricted basis"
+    - "30 days"
+    - "no withdrawals"
+    - "SAR-SF"
+    - "closed"
+  reference_answer: |
+    Per Kestrel's AML program §3.3 (implementing 31 CFR 1023.220), if the
+    firm cannot form a reasonable belief that it knows a customer's true
+    identity, the account may be refused, opened on a restricted basis (no
+    withdrawals, margin, or wire transfers — restrictions time out after 30
+    days), or closed, with a SAR-SF filed where the facts warrant.
+  notes: "Direct fact. Lists the three handling options for verification failure."
+
+- query: "Which personal trades require pre-clearance from Compliance, and how long does an approved pre-clearance stay valid?"
+  category: Spanning
+  expected_chunk_ids:
+    - "Kestrel-Code-of-Ethics::kestrel-code-of-ethics-and-personal-trading-policy-4.-personal-trading-4.3-pre-clearance"
+  keywords:
+    - "individual equity"
+    - "IPO"
+    - "private placement"
+    - "reportable fund"
+    - "trading day"
+    - "market close"
+  reference_answer: |
+    Kestrel's Code of Ethics §4.3 requires pre-clearance for purchases or
+    sales of any individual equity security, corporate or municipal debt,
+    IPO participation, private placements or limited offerings, and
+    transactions in any reportable fund. Approvals are valid only for the
+    trading day on which they are issued and lapse at market close; they
+    can be denied or revoked due to restricted-list status, an open client
+    order, or a research-publication blackout.
+  notes: "Spanning. Asks both the scope of pre-clearance and the duration of approval — two distinct facts in the same section."
+
+- query: "What triggers same-day escalation of a trade error to senior compliance and risk leadership?"
+  category: Numerical
+  expected_chunk_ids:
+    - "Kestrel-Error-Correction-Policy::kestrel-trade-error-correction-policy-4.-reporting-and-escalation"
+  keywords:
+    - "$25,000"
+    - "P&L"
+    - "restricted-list"
+    - "market-access"
+    - "without locate"
+  reference_answer: |
+    Per Kestrel's Trade Error Correction Policy §4, errors are escalated
+    same-day to the CCO, CRO, and Head of Operations if the cash P&L impact
+    exceeds $25,000 or if the error involves a regulatory-sensitive issue
+    such as a restricted-list breach, a failed market-access control, or a
+    short sale executed without a locate.
+  notes: "Numerical threshold ($25,000) plus enumerated regulatory triggers."
+
+- query: "What did FINRA find wrong with how Kestrel was running its regular and rigorous review?"
+  category: Holistic
+  expected_chunk_ids:
+    - "Kestrel-FINRA-Exam-Letter-2025::finra-routine-examination-exit-letter-kestrel-securities-2025-cycle-2.-finding-1-rule-5310-regular-and-rigorous-review-finding"
+  keywords:
+    - "security-by-security"
+    - "order-type"
+    - "order-size"
+    - "payment-for-order-flow"
+    - "wholesale market makers"
+  reference_answer: |
+    The 2025 FINRA exam letter (Finding 1) cited Kestrel for failing FINRA
+    Rule 5310 Supplementary Material .02: the Best Execution Committee
+    reviewed only aggregate Rule 605 statistics from the receiving venues
+    rather than analysing execution quality on a security-by-security,
+    order-type, and order-size basis, and did not substantively evaluate
+    whether the firm's payment-for-order-flow arrangements with two
+    wholesale market makers influenced routing despite a majority of retail
+    market-order flow going to those venues.
+  notes: "Holistic. Operational artifact — the exam-letter finding that drove the WSP Cert §1 remediation."
+
+- query: "How does Kestrel handle trading in restricted-list securities, and is there an exception for market-making activity?"
+  category: Direct fact
+  expected_chunk_ids:
+    - "Kestrel-Information-Barriers::kestrel-information-barriers-restricted-list-and-watch-list-policy-4.-restricted-watch-and-control-lists-4.1-restricted-list"
+  keywords:
+    - "OMS"
+    - "blocked"
+    - "proprietary"
+    - "bona fide"
+    - "case-by-case"
+  reference_answer: |
+    Per Kestrel's Information Barriers §4.1, orders in Restricted List
+    securities are blocked at the OMS level for both customer and
+    proprietary accounts, irrespective of aggregation unit. Bona fide
+    market-making activity in a Restricted List security is evaluated
+    case-by-case and is generally paused for the duration of the restriction.
+  notes: "Direct fact with a narrow exception. Tests whether the answer captures the case-by-case carve-out."
+
+- query: "What hard blocks does Kestrel's trading gateway enforce on order size, order price, and duplicate orders?"
+  category: Numerical
+  expected_chunk_ids:
+    - "Kestrel-Market-Access-Controls::kestrel-market-access-controls-17-cfr-240.15c3-5-3.-financial-risk-management-controls-3.3-order-size-and-order-price-sanity-checks"
+  keywords:
+    - "10%"
+    - "20-day ADV"
+    - "$5 million"
+    - "5%"
+    - "250 milliseconds"
+    - "supervisor"
+  reference_answer: |
+    Kestrel's KTG enforces a hard block on orders exceeding the lesser of
+    10% of the security's 20-day ADV or $5 million notional; on limit orders
+    priced more than 5% away from last sale (NMS equities) or more than 10%
+    from the NBBO midpoint (listed options); and on functionally identical
+    orders received within 250 milliseconds of each other unless an explicit
+    duplicate-allowed flag is set. Overrides require a Trading Floor
+    Supervisor approval logged in the OMS.
+  notes: "Numerical. Three numeric thresholds plus the supervisor-override mechanism."
+
+- query: "How were trade-surveillance escalations to the Insider Trading Review Committee resolved in Q4 2025, and when must FINRA 3110(d) reports be filed?"
+  category: Spanning
+  expected_chunk_ids:
+    - "Kestrel-Trade-Surveillance-Alert-Summary::kestrel-trade-surveillance-q4-2025-alert-summary-4.-escalations-and-outcomes-4.1-itrc-escalations"
+  keywords:
+    - "non-substantive"
+    - "internal-investigation"
+    - "heightened surveillance"
+    - "FINRA Gateway"
+    - "15-day"
+  reference_answer: |
+    Of the 38 ITRC escalations in Q4 2025, 29 closed as non-substantive,
+    7 became internal-investigation files, and 2 placed a trader on a
+    30-day heightened-surveillance watch with no disciplinary action and
+    no SEC or FINRA referrals. The quarterly FINRA Rule 3110(d) submission
+    was filed via FINRA Gateway on February 15, 2026, within the 15-day
+    deadline for the month following quarter-end.
+  notes: "Spanning. Two facts in one section: ITRC dispositions and 3110(d) filing timing."
+
+- query: "What were the main remediation actions Kestrel took during 2025 to address the FINRA Finding 1 on best execution?"
+  category: Holistic
+  expected_chunk_ids:
+    - "Kestrel-WSP-Annual-Cert-2025::supporting-report-1.-executive-summary"
+  keywords:
+    - "Best Execution Policy"
+    - "September 2025"
+    - "committee chairmanship"
+    - "Independent Quantitative Reviewer"
+    - "analytics pack"
+  reference_answer: |
+    Per the 2025 CEO certification supporting report §1, Kestrel's Finding-1
+    remediation included a September 2025 rewrite of the Best Execution
+    Policy, a change in committee chairmanship, engagement of an Independent
+    Quantitative Reviewer, and a redesign of the analytics pack supporting
+    the committee's deliberations. The remediation was operational at year-
+    end with the FINRA closing letter anticipated in Q2 2026.
+  notes: "Holistic. Operational artifact summarising the remediation arc that ties exam-letter finding → policy rewrite → committee composition change."
+
+- query: "Where can we hold customer securities and still meet the possession-or-control requirement under Rule 15c3-3?"
+  category: Spanning
+  expected_chunk_ids:
+    - "17-CFR-240.15c3-3::(b)::p0"
+  keywords:
+    - "fully-paid"
+    - "excess-margin"
+    - "clearing corporation"
+    - "DTC"
+    - "bank"
+    - "vault"
+  reference_answer: |
+    Under SEC Rule 15c3-3(b), a broker-dealer must promptly obtain and
+    maintain physical possession or control of all fully-paid and excess-
+    margin customer securities. Recognized control locations include a
+    clearing corporation such as DTC, a bank acting as custodian, the
+    broker-dealer's own vault, a Commission-recognized foreign depository
+    or clearing agency, or other Commission-approved locations.
+  notes: "Spanning. Definition of possession/control plus the enumerated set of acceptable locations."
+
+- query: "Under the Customer Reserve Formula, how do we figure out the required deposit and what are we actually depositing?"
+  category: Numerical
+  expected_chunk_ids:
+    - "17-CFR-240.15c3-3a::240.15c3-3a-customer-reserve-formula."
+  keywords:
+    - "net credit balance"
+    - "credits exceed debits"
+    - "cash or qualified securities"
+    - "Special Reserve Bank Account"
+  reference_answer: |
+    Under SEC Rule 15c3-3a, the required reserve deposit equals the extent
+    to which total customer credits exceed total customer debits — the
+    "net credit balance." The broker-dealer must deposit cash or qualified
+    securities equal to that excess in the Special Reserve Bank Account
+    for the Exclusive Benefit of Customers on the prescribed deposit date
+    following each computation.
+  notes: "Numerical / definitional. Deposit mechanics for the customer-protection reserve."
+
+- query: "What information has to be on the order memorandum we keep for every brokerage order, and what about block-order allocations?"
+  category: Direct fact
+  expected_chunk_ids:
+    - "17-CFR-240.17a-3::(v)::p0"
+  keywords:
+    - "terms and conditions"
+    - "time of receipt"
+    - "time of execution"
+    - "block"
+    - "post-execution"
+  reference_answer: |
+    Under SEC Rule 17a-3(a)(6), the order memorandum must show the terms
+    and conditions of the order, the account it was entered for, the time
+    of receipt, and the time of execution or cancellation, with receipt
+    treated as entry time for market orders and as identical to execution
+    for orders executed on receipt. Post-execution allocations of block
+    orders must also be documented.
+  notes: "Direct fact. The chunker landed item (a)(6) in the (v)::p0 chunk because (a)(6)/(7)/etc share a frame with item 4(v)."
+
+- query: "Can we use ordinary editable electronic storage for our books and records, or do we need write-once media?"
+  category: Comparative
+  expected_chunk_ids:
+    - "17-CFR-240.17a-4::(f)::p0"
+  keywords:
+    - "WORM"
+    - "audit-trail"
+    - "time-stamped"
+    - "original record"
+    - "2022"
+  reference_answer: |
+    Under SEC Rule 17a-4(f), a broker-dealer may preserve required records
+    electronically using either traditional WORM (write-once, read-many)
+    media or, since the 2022 amendments, an audit-trail alternative under
+    which editable storage is acceptable provided the system maintains a
+    complete time-stamped audit trail of every modification, preserves the
+    original record, and enforces appropriate access controls.
+  notes: "Comparative. WORM vs. audit-trail alternative — two paths to the same compliance outcome."
+
+- query: "How does the aggregation-unit framework change whether a broker-dealer is treated as owning a security for short-sale purposes?"
+  category: Relationship
+  expected_chunk_ids:
+    - "17-CFR-242.200::(d)::p0"
+    - "17-CFR-242.200::(f)::p0"
+  keywords:
+    - "net long"
+    - "trading unit"
+    - "independent"
+    - "documented"
+    - "objective"
+  reference_answer: |
+    Under Reg SHO Rule 200(c) and (d), a person owns a security only to the
+    extent of a net-long position. A broker-dealer may treat aggregation
+    units separately if each unit meets the conditions in paragraph (f) —
+    namely, an identifiable trading objective, independent supervision,
+    separately tracked positions, and documented organising policies —
+    allowing ownership to be measured on a unit-by-unit basis rather than
+    firm-wide.
+  notes: "Relationship. Two paragraphs ((d) defines the unit, (f) sets conditions) that together change the short-sale ownership calculus."
+
+- query: "What triggers the alternative uptick rule, and what does it actually restrict?"
+  category: Direct fact
+  expected_chunk_ids:
+    - "17-CFR-242.201::242.201-price-test-restriction-alternative-uptick-rule-."
+  keywords:
+    - "10%"
+    - "intraday"
+    - "covered security"
+    - "national best bid"
+    - "next trading day"
+  reference_answer: |
+    Reg SHO Rule 201 triggers when a covered security (any NMS stock)
+    declines 10% or more intraday from the prior day's closing price on
+    the listing market. Once triggered, short-sale orders cannot be
+    displayed or executed at a price at or below the current national
+    best bid for the remainder of that trading day and the entirety of
+    the next trading day.
+  notes: "Direct fact. Two-part: trigger condition and the restriction itself."
+
+- query: "Can we rely solely on Rule 605 statistics published by venues to satisfy FINRA Rule 5310's regular and rigorous review obligation?"
+  category: Comparative
+  expected_chunk_ids:
+    - "17-CFR-242.605::interpretive-notes-rule-605-interaction-with-rule-5310"
+  keywords:
+    - "principal public data"
+    - "not sufficient"
+    - "own customer order flow"
+    - "order types"
+    - "aggregate"
+  reference_answer: |
+    No. Rule 605 statistics are the principal public data source members
+    use for the regular and rigorous review under FINRA Rule 5310
+    Supplementary Material .02, but they are not sufficient on their own.
+    Members must independently evaluate routing decisions in the context
+    of their own customer order flow, including order types and sizes that
+    may not be represented proportionately in a venue's aggregate Rule 605
+    report.
+  notes: "Comparative. 605 alone vs. 605 + own-flow analysis — directly mirrors the AWC and Kestrel exam-letter findings."
