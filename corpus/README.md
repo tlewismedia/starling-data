@@ -31,7 +31,8 @@ Rule 206(4)-2 surprise-exam timing irregularity. These animate the
 title: string
 authority: "SEC" | "FINRA" | "MSRB" | "FinCEN" | "Kestrel"
 source: string
-citation_id: string
+citation_id: string              # slug, [A-Za-z0-9.()_-], hyphen-separated
+citation_id_display: string      # human form for citations (spaces, commas, punctuation)
 jurisdiction: "US-Federal" | "SRO" | "Internal"
 doc_type: "regulation" | "rule" | "guidance" | "enforcement" | "internal" | "operational"
 effective_date: string           # YYYY-MM-DD or "n/a"
@@ -50,17 +51,17 @@ Validation runs at ingest; missing fields produce `status: "skipped"`.
 
 | File | Authority | Citation ID | Doc type | Version | Supersedes |
 |---|---|---|---|---|---|
-| `reg-bi-form-crs.md` | SEC | 17 CFR 240.15l-1 | regulation | current | n/a |
+| `reg-bi-form-crs.md` | SEC | 17-CFR-240.15l-1 | regulation | current | n/a |
 | `finra-5310-best-execution.md` | FINRA | FINRA-Rule-5310 | rule | current | n/a |
-| `sec-rule-605-606-order-routing.md` | SEC | 17 CFR 242.605-606 | regulation | current | n/a |
+| `sec-rule-605-606-order-routing.md` | SEC | 17-CFR-242.605-606 | regulation | current | n/a |
 | `proposed-reg-best-execution.md` | SEC | SEC-Release-34-96496 | regulation | **proposed** | n/a |
-| `reg-sho.md` | SEC | 17 CFR 242.200-204 | regulation | current | n/a |
+| `reg-sho.md` | SEC | 17-CFR-242.200-204 | regulation | current | n/a |
 | `finra-3110-3130-supervision.md` | FINRA | FINRA-Rule-3110-3130 | rule | current | n/a |
-| `sec-net-capital-customer-protection.md` | SEC | 17 CFR 240.15c3-1, 240.15c3-3 | regulation | current | n/a |
-| `sec-books-records-market-access.md` | SEC | 17 CFR 240.17a-3, 240.17a-4, 240.15c3-5 | regulation | current | n/a |
-| `advisers-act-antifraud-code-of-ethics.md` | SEC | 15 USC 80b-6 / 17 CFR 275.204A-1 | regulation | current | n/a |
-| `advisers-act-marketing-custody.md` | SEC | 17 CFR 275.206(4)-1 and 275.206(4)-2 | regulation | current | **17 CFR 275.206(4)-3** |
-| `bsa-aml-broker-dealer.md` | FinCEN | 31 CFR Part 1023 | regulation | current | n/a |
+| `sec-net-capital-customer-protection.md` | SEC | 17-CFR-240.15c3-1-240.15c3-3 | regulation | current | n/a |
+| `sec-books-records-market-access.md` | SEC | 17-CFR-240.17a-3-240.17a-4-240.15c3-5 | regulation | current | n/a |
+| `advisers-act-antifraud-code-of-ethics.md` | SEC | 15-USC-80b-6-17-CFR-275.204A-1 | regulation | current | n/a |
+| `advisers-act-marketing-custody.md` | SEC | 17-CFR-275.206(4)-1-and-275.206(4)-2 | regulation | current | **17-CFR-275.206(4)-3** |
+| `bsa-aml-broker-dealer.md` | FinCEN | 31-CFR-Part-1023 | regulation | current | n/a |
 | `enforcement-finra-awc-best-ex.md` | FINRA | FINRA-AWC-2023056789201 | enforcement | current | n/a |
 
 ## Document inventory — internal Kestrel documents
