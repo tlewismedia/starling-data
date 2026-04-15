@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { graph } from "../../../pipeline/graph";
-import type { Citation, Retrieval } from "../../../shared/types";
+import type { QueryResponse } from "../../../shared/types";
 
 export async function POST(request: Request): Promise<NextResponse> {
   let body: unknown;
@@ -10,13 +10,7 @@ export async function POST(request: Request): Promise<NextResponse> {
     return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
   }
 
-  const query =
-    body !== null &&
-    typeof body === "object" &&
-    "query" in body
-      ? (body as Record<string, unknown>).query
-      : undefined;
-
+  const query = (body as { query?: unknown } | null)?.query;
   if (typeof query !== "string" || query.trim() === "") {
     return NextResponse.json(
       { error: "Missing or invalid query" },
@@ -24,9 +18,14 @@ export async function POST(request: Request): Promise<NextResponse> {
     );
   }
 
-  let state: { answer?: string; citations?: Citation[]; retrievals?: Retrieval[] };
   try {
-    state = await graph.invoke({ query });
+    const state = await graph.invoke({ query });
+    const response: QueryResponse = {
+      answer: state.answer ?? "",
+      citations: state.citations ?? [],
+      retrievals: state.retrievals ?? [],
+    };
+    return NextResponse.json(response);
   } catch (err) {
     console.error("[api/query] pipeline error:", err);
     return NextResponse.json(
@@ -34,10 +33,4 @@ export async function POST(request: Request): Promise<NextResponse> {
       { status: 500 },
     );
   }
-
-  return NextResponse.json({
-    answer: state.answer ?? "",
-    citations: state.citations ?? [],
-    retrievals: state.retrievals ?? [],
-  });
 }

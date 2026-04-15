@@ -1,23 +1,8 @@
-/**
- * Thin Pinecone upsert wrapper using integrated-embedding index API.
- *
- * Receives ready-made `Chunk[]` and maps them to flat Pinecone records.
- * Batches at most 100 records per request (Pinecone limit).
- * Knows nothing about front-matter — that responsibility lives in the caller.
- */
-
 import { Pinecone } from "@pinecone-database/pinecone";
 import type { Chunk } from "../shared/types";
 
 const BATCH_SIZE = 100;
 
-/**
- * Flat record shape sent to Pinecone.
- * No nesting, no `metadata` field, no object values — all fields are primitives.
- *
- * We use `Record<string, string | number | boolean | string[]>` as the base type
- * to satisfy `IntegratedRecord<RecordMetadata>` required by the Pinecone SDK.
- */
 type PineconeIngestRecord = {
   id: string;
   chunk_text: string;
@@ -50,13 +35,6 @@ function chunkToRecord(chunk: Chunk): PineconeIngestRecord {
   };
 }
 
-/**
- * Upsert `chunks` into the Pinecone integrated-embedding index.
- *
- * @param pc        - Authenticated Pinecone client.
- * @param indexName - Name of the target Pinecone index.
- * @param chunks    - Chunks to upsert.
- */
 export async function upsertChunks(
   pc: Pinecone,
   indexName: string,
@@ -67,9 +45,7 @@ export async function upsertChunks(
   const index = pc.index(indexName);
   const records = chunks.map(chunkToRecord);
 
-  // Batch into groups of at most BATCH_SIZE.
   for (let i = 0; i < records.length; i += BATCH_SIZE) {
-    const batch = records.slice(i, i + BATCH_SIZE);
-    await index.upsertRecords({ records: batch });
+    await index.upsertRecords({ records: records.slice(i, i + BATCH_SIZE) });
   }
 }

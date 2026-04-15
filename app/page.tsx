@@ -1,17 +1,13 @@
 "use client";
 
 import { useState } from "react";
-import type { Citation, Retrieval } from "../shared/types";
+import type { QueryResponse } from "../shared/types";
 
 export default function HomePage(): React.JSX.Element {
   const [query, setQuery] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [result, setResult] = useState<{
-    answer: string;
-    citations: Citation[];
-    retrievals: Retrieval[];
-  } | null>(null);
+  const [result, setResult] = useState<QueryResponse | null>(null);
 
   async function handleSubmit() {
     if (!query.trim()) return;
@@ -23,13 +19,12 @@ export default function HomePage(): React.JSX.Element {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ query }),
       });
+      const data = await res.json();
       if (!res.ok) {
-        const data = await res.json();
         setError((data as { error?: string }).error ?? "Something went wrong.");
         return;
       }
-      const data = await res.json();
-      setResult(data as { answer: string; citations: Citation[]; retrievals: Retrieval[] });
+      setResult(data as QueryResponse);
     } catch {
       setError("Network error. Please try again.");
     } finally {
@@ -46,7 +41,6 @@ export default function HomePage(): React.JSX.Element {
 
   return (
     <main className="mx-auto max-w-2xl px-4 py-12">
-      {/* Header */}
       <h1 className="text-3xl font-semibold tracking-tight text-neutral-900">
         Compliance Copilot
       </h1>
@@ -54,7 +48,6 @@ export default function HomePage(): React.JSX.Element {
         Ask a regulatory compliance question and get a cited answer.
       </p>
 
-      {/* Query form */}
       <div className="mt-6 space-y-3">
         <textarea
           value={query}
@@ -70,21 +63,14 @@ export default function HomePage(): React.JSX.Element {
           disabled={loading || !query.trim()}
           className="rounded-lg bg-neutral-900 px-5 py-2.5 text-sm font-medium text-white shadow-sm hover:bg-neutral-700 focus:outline-none focus:ring-2 focus:ring-neutral-900 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
         >
-          {loading ? "Thinking\u2026" : "Submit"}
+          {loading ? "Thinking…" : "Submit"}
         </button>
       </div>
 
-      {/* Error */}
       {error && (
         <p className="mt-4 text-sm text-red-600">{error}</p>
       )}
 
-      {/* Loading indicator */}
-      {loading && (
-        <p className="mt-4 text-sm text-neutral-500">Thinking\u2026</p>
-      )}
-
-      {/* Answer panel */}
       {result && (
         <div data-testid="answer" className="mt-8 rounded-lg border border-neutral-200 bg-neutral-50 p-5">
           <h2 className="text-base font-semibold text-neutral-900">Answer</h2>
@@ -92,7 +78,6 @@ export default function HomePage(): React.JSX.Element {
         </div>
       )}
 
-      {/* Sources panel */}
       {result && result.citations.length > 0 && (
         <div className="mt-6">
           <h2 className="text-base font-semibold text-neutral-900">Sources</h2>
@@ -112,7 +97,7 @@ export default function HomePage(): React.JSX.Element {
                   {retrieval && (
                     <p className="mt-1 text-neutral-600">
                       {retrieval.text.slice(0, 200)}
-                      {retrieval.text.length > 200 ? "\u2026" : ""}
+                      {retrieval.text.length > 200 ? "…" : ""}
                     </p>
                   )}
                 </li>

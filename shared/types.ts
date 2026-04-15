@@ -31,5 +31,11 @@ export interface Chunk {
   readonly metadata: ChunkMetadata;
 }
 
+export interface QueryResponse {
+  readonly answer: string;
+  readonly citations: Citation[];
+  readonly retrievals: Retrieval[];
+}
+
 // GraphState is derived from the LangGraph annotation in pipeline/state.ts.
 export type { GraphState } from "../pipeline/state";

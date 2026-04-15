@@ -60,11 +60,9 @@ export function createGenerateNode(openai: OpenAI) {
 
     const answer = response.choices[0]?.message?.content ?? "";
 
-    const citations = parseCitations(answer, state);
-
     return {
       answer,
-      citations: citations.length > 0 ? citations : undefined,
+      citations: parseCitations(answer, state),
     };
   };
 }
