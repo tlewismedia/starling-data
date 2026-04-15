@@ -138,6 +138,6 @@ describe("generate node", () => {
     const result = await generateNode(state);
 
     expect(result.answer).toBe(cannotAnswerText);
-    expect(result.citations).toBeUndefined();
+    expect(result.citations).toEqual([]);
   });
 });
