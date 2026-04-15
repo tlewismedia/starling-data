@@ -12,32 +12,32 @@ flowchart TD
 
     subgraph B[scripts/ingest.ts]
         direction TB
-        B1[Env validation\nPINECONE_API_KEY\nPINECONE_INDEX] --> B2[describeIndex\nstartup check]
-        B2 --> B3[Read + parse\ngray-matter]
-        B3 --> B4[Extract front-matter\n+ markdown body]
+        B1[Env validation<br/>PINECONE_API_KEY<br/>PINECONE_INDEX] --> B2[describeIndex<br/>startup check]
+        B2 --> B3[Read + parse<br/>gray-matter]
+        B3 --> B4[Extract front-matter<br/>+ markdown body]
     end
 
-    B4 --> C[ingest/chunk.ts\nchunkDocument]
+    B4 --> C[ingest/chunk.ts<br/>chunkDocument]
 
     subgraph C[ingest/chunk.ts — chunkDocument]
         direction TB
-        C1[Split on H1/H2/H3\nheaders] --> C2[Track heading path\nper section]
-        C2 --> C3[Pack sentences into\n~500-token chunks]
-        C3 --> C4[Add ~50-token\noverlap between chunks]
-        C4 --> C5[Guard: never split\nmid-citation or mid-sentence]
+        C1[Split on H1/H2/H3<br/>headers] --> C2[Track heading path<br/>per section]
+        C2 --> C3[Pack sentences into<br/>~500-token chunks]
+        C3 --> C4[Add ~50-token<br/>overlap between chunks]
+        C4 --> C5[Guard: never split<br/>mid-citation or mid-sentence]
     end
 
-    C5 --> D[Chunk[]\nid · text · metadata]
+    C5 --> D["Chunk[]<br/>id · text · metadata"]
 
-    D --> E[ingest/upsert.ts\nupsertChunks]
+    D --> E[ingest/upsert.ts<br/>upsertChunks]
 
     subgraph E[ingest/upsert.ts — upsertChunks]
         direction TB
-        E1[Map Chunk → flat\nPinecone record] --> E2[Batch into\n≤100 records]
-        E2 --> E3[index.upsertRecords\nintegrated-embedding API]
+        E1[Map Chunk → flat<br/>Pinecone record] --> E2[Batch into<br/>≤100 records]
+        E2 --> E3[index.upsertRecords<br/>integrated-embedding API]
     end
 
-    E3 --> F[(Pinecone\ncompliance-copilot)]
+    E3 --> F[(Pinecone<br/>compliance-copilot)]
 
     F -.->|searchRecords at query time| G[pipeline/nodes/retrieve.ts]
 ```
@@ -51,7 +51,7 @@ Every record in Pinecone is **flat** — no nested `metadata` object, no object 
 | Field | Type | Example |
 |---|---|---|
 | `id` | string | `12 CFR 1026.18::chunk_0` |
-| `text` | string | chunk body (embedded by Pinecone) |
+| `chunk_text` | string | chunk body (embedded by Pinecone via index `fieldMap`) |
 | `title` | string | `"CFPB Regulation Z — §1026.18"` |
 | `source` | string | `"CFPB"` |
 | `citation_id` | string | `"12 CFR 1026.18"` |
@@ -69,11 +69,11 @@ Every record in Pinecone is **flat** — no nested `metadata` object, no object 
 ```mermaid
 flowchart LR
     A[Raw markdown] --> B{Has headers?}
-    B -->|Yes| C[Split at H1/H2/H3\nboundaries]
-    B -->|No| D[Treat whole body\nas one section]
-    C --> E[Pack sentences\n~500 tokens each]
+    B -->|Yes| C[Split at H1/H2/H3<br/>boundaries]
+    B -->|No| D[Treat whole body<br/>as one section]
+    C --> E[Pack sentences<br/>~500 tokens each]
     D --> E
-    E --> F[Slide 50-token\noverlap window]
+    E --> F[Slide 50-token<br/>overlap window]
     F --> G[Chunk[]]
 ```
 
