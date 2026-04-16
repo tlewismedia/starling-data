@@ -107,7 +107,12 @@ export function DashboardPage(): React.JSX.Element {
           />
 
           {/* TEMP_SAMPLE_QUESTIONS: Remove when issue #37 affordance is no longer needed. */}
-          <SampleQuestions />
+          <SampleQuestions
+            onSelect={(q) => {
+              setQuery(q);
+              textareaRef.current?.focus();
+            }}
+          />
 
           {error && (
             <Card className="p-5 text-[13px] text-[#8b3a2f]">{error}</Card>
