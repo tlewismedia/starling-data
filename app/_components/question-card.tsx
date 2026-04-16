@@ -1,4 +1,4 @@
-import { CARD } from "./shared";
+import { Card } from "./card";
 
 export function QuestionCard({
   query,
@@ -17,7 +17,7 @@ export function QuestionCard({
 }): React.JSX.Element {
   const disabled = loading || query.trim().length === 0;
   return (
-    <div className={`${CARD} p-6`} data-testid="question-card">
+    <Card className="p-6" data-testid="question-card">
       <div className="flex items-center justify-between">
         <label
           htmlFor="question-input"
@@ -71,7 +71,7 @@ export function QuestionCard({
           </span>
         </button>
       </div>
-    </div>
+    </Card>
   );
 }
 

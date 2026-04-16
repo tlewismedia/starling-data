@@ -1,14 +1,13 @@
 import { useMemo } from "react";
 import type { Citation, Retrieval } from "../../shared/types";
+import { Card } from "./card";
 import {
-  CARD,
   SERIF,
   type ConfidenceTier,
   parseAnswerParts,
-  citationMarkerNumber,
-  findRetrievalForCitation,
-  authorityStyle,
 } from "./shared";
+import { CitationChip } from "./citation-chip";
+import { SourcesRow } from "./sources-row";
 
 export function AnswerCard({
   answer,
@@ -24,8 +23,8 @@ export function AnswerCard({
   const parts = useMemo(() => parseAnswerParts(answer), [answer]);
 
   return (
-    <div
-      className={`${CARD} relative overflow-hidden p-7`}
+    <Card
+      className="relative overflow-hidden p-7"
       data-testid="answer"
     >
       <div
@@ -55,41 +54,9 @@ export function AnswerCard({
       </p>
 
       {citations.length > 0 && (
-        <div className="mt-6" data-testid="sources-row">
-          <div className="flex items-center gap-3">
-            <span className="text-[11px] uppercase tracking-[0.18em] text-[#6b7a70]">
-              Sources
-            </span>
-            <div className="h-px flex-1 bg-gradient-to-r from-[#9cc9a9]/40 to-transparent" />
-          </div>
-          <div className="mt-3 flex flex-wrap gap-2">
-            {citations.map((c) => {
-              const retrieval = findRetrievalForCitation(c, retrievals);
-              const a = authorityStyle(retrieval?.metadata?.authority);
-              const display =
-                retrieval?.metadata?.citationIdDisplay ||
-                retrieval?.metadata?.citationId ||
-                c.chunkId;
-              const n = citationMarkerNumber(c.marker);
-              return (
-                <span
-                  key={c.chunkId}
-                  className={`inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-[12px] ${a.chip}`}
-                >
-                  {n !== null && (
-                    <span className="font-mono text-[10px] opacity-70">
-                      [{n}]
-                    </span>
-                  )}
-                  <span className="font-semibold">{a.label}</span>
-                  <span className="opacity-75">{display}</span>
-                </span>
-              );
-            })}
-          </div>
-        </div>
+        <SourcesRow citations={citations} retrievals={retrievals} />
       )}
-    </div>
+    </Card>
   );
 }
 
@@ -158,10 +125,3 @@ function ConfidenceBadge({
   );
 }
 
-function CitationChip({ n }: { n: number }): React.JSX.Element {
-  return (
-    <span className="mx-[2px] inline-flex h-5 min-w-[22px] -translate-y-[1px] items-center justify-center rounded-full bg-[#dfeee3] px-1.5 font-mono text-[11px] font-medium text-[#2d4a35] ring-1 ring-[#9cc9a9]/40 transition-all hover:bg-[#c4e0cd] hover:ring-[#9cc9a9]">
-      {n}
-    </span>
-  );
-}

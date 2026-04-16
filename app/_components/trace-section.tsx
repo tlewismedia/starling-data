@@ -1,6 +1,6 @@
 import type { Citation, Retrieval } from "../../shared/types";
+import { Card } from "./card";
 import {
-  CARD,
   SERIF,
   type ConfidenceTier,
   type RunMeta,
@@ -106,7 +106,7 @@ function TraceNode({
   const dotRing = accent === "sage" ? "ring-[#9cc9a9]/30" : "ring-[#fab89a]/40";
   const text = accent === "sage" ? "text-[#2d4a35]" : "text-[#8b4a2f]";
   return (
-    <div className={`${CARD} relative p-6`}>
+    <Card className="relative p-6">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
           <div
@@ -127,7 +127,7 @@ function TraceNode({
         )}
       </div>
       <div className="mt-4">{children}</div>
-    </div>
+    </Card>
   );
 }
 

@@ -2,7 +2,8 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { QueryResponse } from "../shared/types";
-import { CARD, confidenceTier, shortHex } from "./_components/shared";
+import { confidenceTier, shortHex } from "./_components/shared";
+import { Card } from "./_components/card";
 import { BackgroundLayers } from "./_components/background-layers";
 import { Header } from "./_components/header";
 import { QuestionCard } from "./_components/question-card";
@@ -89,9 +90,9 @@ export default function HomePage(): React.JSX.Element {
             />
 
             {error && (
-              <div className={`${CARD} p-5 text-[13px] text-[#8b3a2f]`}>
+              <Card className="p-5 text-[13px] text-[#8b3a2f]">
                 {error}
-              </div>
+              </Card>
             )}
 
             {result && (
