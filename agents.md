@@ -129,8 +129,8 @@ Only the orchestrator sets these.
 
 - Progress comments (`Starting work…`, `Implementation complete`).
 - Label transitions (orchestrator only).
-- Reviewer verdict as a GitHub comment.
-- Opening a PR after reviewer APPROVED (so the human can review the diff in GitHub).
+- Reviewer verdict as a GitHub comment — both APPROVED and NEEDS CHANGES.
+- **On `[REVIEWER AGENT] APPROVED`: the orchestrator posts the verdict, flips `in-review` → `approved`, pushes the branch, and opens the PR with `Closes #<N>` in one automatic sweep. No human confirmation at this gate.** The diff gets reviewed in GitHub, not before the PR exists.
 
 **Requires human confirmation before action:**
 
@@ -138,8 +138,9 @@ Only the orchestrator sets these.
 - Closing an issue.
 - Deleting branches.
 - Any `git reset --hard`, force push, or amend of pushed commits.
+- On `[REVIEWER AGENT] NEEDS CHANGES`: surface the verdict to the human before re-dispatching the implementer.
 
-Why: merging and closing are hard to reverse. PRs open automatically so the human has a diff to review before deciding to merge.
+Why: merging and closing are hard to reverse. PRs open automatically so the human has a diff to review before deciding to merge. A NEEDS CHANGES verdict deserves a human decision on whether to re-dispatch, adjust the spec, or close as WONTFIX — so we gate there.
 
 ---
 
