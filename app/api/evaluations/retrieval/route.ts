@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
 import { resolve } from "path";
-import { graph } from "../../../../pipeline/graph";
 import {
   RETRIEVAL_K,
   createPineconeIndex,
@@ -65,16 +64,17 @@ export async function POST(): Promise<Response> {
         for (let i = 0; i < loadedItems.length; i++) {
           const item = loadedItems[i];
 
-          // Production retrieval via compiled graph (top-5)
-          const state = await graph.invoke({ query: item.query });
-          const topFiveIds = (state.retrievals ?? []).map((r) => r.chunkId);
+          // One direct Pinecone call provides chunks for both metrics:
+          // the first 5 IDs feed pinpoint_precision@5; all K feed the
+          // keyword-based retrieval metrics. The graph (which would also
+          // invoke the LLM) is not needed here.
+          const topK = await retrieveForEval(index, item.query, RETRIEVAL_K);
+          const topFiveIds = topK.slice(0, 5).map((c) => c.chunkId);
           const { pinpointPrecision } = scorePinpoint(
             topFiveIds,
             item.expected_chunk_ids,
           );
 
-          // Separate top-K for keyword-based retrieval metrics
-          const topK = await retrieveForEval(index, item.query, RETRIEVAL_K);
           const { mrr, ndcg, keywordCoverage } = scoreKeywordMetrics(
             item.keywords,
             topK,
