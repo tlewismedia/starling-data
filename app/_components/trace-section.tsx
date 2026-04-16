@@ -1,3 +1,6 @@
+"use client";
+
+import { useState } from "react";
 import type { Citation, Retrieval } from "../../shared/types";
 import { Card } from "./card";
 import {
@@ -24,45 +27,80 @@ export function TraceSection({
   citations: readonly Citation[];
   tier: ConfidenceTier;
 }): React.JSX.Element {
+  const [open, setOpen] = useState(false);
+
   return (
     <div className="pt-2" data-testid="trace">
-      <div className="mb-4 flex items-end justify-between gap-4">
-        <div className="flex flex-wrap items-center gap-4">
+      <div className="mb-4 flex flex-wrap items-center gap-4">
+        <button
+          type="button"
+          onClick={() => setOpen((v) => !v)}
+          aria-expanded={open}
+          aria-controls="trace-body"
+          className="group inline-flex items-center gap-2 rounded-full px-1 py-1 text-left"
+        >
+          <span
+            className={`inline-flex h-5 w-5 items-center justify-center rounded-full bg-white/70 text-[#435048] ring-1 ring-[#2d4a35]/10 transition-transform ${
+              open ? "rotate-90" : ""
+            }`}
+            aria-hidden
+          >
+            <svg width="8" height="8" viewBox="0 0 8 8" fill="none">
+              <path
+                d="M2.5 1.5L5.5 4L2.5 6.5"
+                stroke="currentColor"
+                strokeWidth="1.3"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
+          </span>
           <span
             className="text-[20px] tracking-tight text-[#1f2a23]"
             style={SERIF}
           >
             Trace
           </span>
-          <div className="flex flex-wrap items-center gap-4 rounded-full bg-white/60 px-3.5 py-1.5 text-[11px] text-[#435048] ring-1 ring-[#2d4a35]/[0.08] backdrop-blur-md">
-            <TraceMeta label="Run" value={`#${runMeta.run}`} mono />
-            <span className="h-2.5 w-px bg-[#2d4a35]/15" />
-            <TraceMeta label="When" value={runMeta.when} />
-            <span className="h-2.5 w-px bg-[#2d4a35]/15" />
-            <TraceMeta
-              label="Duration"
-              value={formatDuration(runMeta.durationMs)}
-              mono
-            />
-          </div>
+        </button>
+        <div className="flex flex-wrap items-center gap-4 rounded-full bg-white/60 px-3.5 py-1.5 text-[11px] text-[#435048] ring-1 ring-[#2d4a35]/[0.08] backdrop-blur-md">
+          <TraceMeta label="Run" value={`#${runMeta.run}`} mono />
+          <span className="h-2.5 w-px bg-[#2d4a35]/15" />
+          <TraceMeta label="When" value={runMeta.when} />
+          <span className="h-2.5 w-px bg-[#2d4a35]/15" />
+          <TraceMeta
+            label="Duration"
+            value={formatDuration(runMeta.durationMs)}
+            mono
+          />
         </div>
       </div>
 
-      <div className="space-y-0">
-        <TraceNode label="Query" accent="sage" duration={null}>
-          <QueryNodeContent query={query} />
-        </TraceNode>
-        <TraceConnector />
-        <TraceNode label="Retrieve" accent="sage" duration={null}>
-          <RetrieveNodeContent
-            retrievals={retrievals}
-            citations={citations}
-          />
-        </TraceNode>
-        <TraceConnector />
-        <TraceNode label="Generate" accent="peach" duration={null}>
-          <GenerateNodeContent tier={tier} />
-        </TraceNode>
+      <div
+        id="trace-body"
+        className={`grid transition-[grid-template-rows,opacity] duration-300 ease-out ${
+          open
+            ? "grid-rows-[1fr] opacity-100"
+            : "grid-rows-[0fr] opacity-0"
+        }`}
+      >
+        <div className="overflow-hidden">
+          <div className="space-y-0">
+            <TraceNode label="Query" accent="sage" duration={null}>
+              <QueryNodeContent query={query} />
+            </TraceNode>
+            <TraceConnector />
+            <TraceNode label="Retrieve" accent="sage" duration={null}>
+              <RetrieveNodeContent
+                retrievals={retrievals}
+                citations={citations}
+              />
+            </TraceNode>
+            <TraceConnector />
+            <TraceNode label="Generate" accent="peach" duration={null}>
+              <GenerateNodeContent tier={tier} />
+            </TraceNode>
+          </div>
+        </div>
       </div>
     </div>
   );

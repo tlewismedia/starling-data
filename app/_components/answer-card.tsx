@@ -5,6 +5,8 @@ import {
   SERIF,
   type ConfidenceTier,
   parseAnswerParts,
+  findRetrievalForCitation,
+  citationMarkerNumber,
 } from "./shared";
 import { CitationChip } from "./citation-chip";
 import { SourcesRow } from "./sources-row";
@@ -14,13 +16,26 @@ export function AnswerCard({
   citations,
   retrievals,
   tier,
+  onCitationClick,
 }: {
   answer: string;
   citations: readonly Citation[];
   retrievals: readonly Retrieval[];
   tier: ConfidenceTier;
+  onCitationClick?: (n: number) => void;
 }): React.JSX.Element {
   const parts = useMemo(() => parseAnswerParts(answer), [answer]);
+
+  const excerptByMarker = useMemo(() => {
+    const m = new Map<number, string>();
+    for (const c of citations) {
+      const n = citationMarkerNumber(c.marker);
+      if (n === null) continue;
+      const r = findRetrievalForCitation(c, retrievals);
+      if (r?.text) m.set(n, r.text);
+    }
+    return m;
+  }, [citations, retrievals]);
 
   return (
     <Card
@@ -48,7 +63,12 @@ export function AnswerCard({
           part.kind === "text" ? (
             <span key={i}>{part.text}</span>
           ) : (
-            <CitationChip key={i} n={part.n} />
+            <CitationChip
+              key={i}
+              n={part.n}
+              excerpt={excerptByMarker.get(part.n)}
+              onActivate={onCitationClick}
+            />
           ),
         )}
       </p>

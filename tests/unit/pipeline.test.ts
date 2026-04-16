@@ -128,6 +128,32 @@ describe("generate node", () => {
     expect(result.citations![1].marker).toBe("[^2]");
   });
 
+  it("renumbers citations to start at 1 when model skips earlier markers", async () => {
+    const retrievals = [
+      { chunkId: "chunk-A", text: "First.", score: 0.9 },
+      { chunkId: "chunk-B", text: "Second.", score: 0.8 },
+      { chunkId: "chunk-C", text: "Third.", score: 0.7 },
+    ];
+    // Model references retrieval #3 first, then #2 — never #1.
+    const openai = makeOpenAIMock("See [^3] and also [^2].");
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const generateNode = createGenerateNode(openai as any);
+    const state = makeState({ retrievals });
+
+    const result = await generateNode(state);
+
+    expect(result.answer).toBe("See [^1] and also [^2].");
+    expect(result.citations).toHaveLength(2);
+    expect(result.citations![0]).toEqual({
+      chunkId: "chunk-C",
+      marker: "[^1]",
+    });
+    expect(result.citations![1]).toEqual({
+      chunkId: "chunk-B",
+      marker: "[^2]",
+    });
+  });
+
   it("handles empty retrievals gracefully", async () => {
     const cannotAnswerText = "I cannot answer from the available sources.";
     const openai = makeOpenAIMock(cannotAnswerText);
