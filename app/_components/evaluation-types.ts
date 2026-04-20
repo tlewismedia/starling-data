@@ -57,6 +57,74 @@ export interface AnswerStreamItem {
   readonly error?: string;
 }
 
+// ── saved reports (persisted to eval/saved-reports/) ────────────────────────
+
+/**
+ * Metadata for a saved report — what the list endpoint and the report
+ * selector dropdown need to render an option without loading the full
+ * summary data.
+ */
+export interface SavedReportMeta {
+  readonly id: string;
+  readonly savedAt: string;
+}
+
+/**
+ * Full persisted report payload. Either `retrieval` or `answer` may be
+ * null if the user only ran one section before saving, but not both.
+ */
+export interface SavedReport extends SavedReportMeta {
+  readonly retrieval: RetrievalSummary | null;
+  readonly answer: AnswerSummary | null;
+}
+
+/**
+ * What the `/evaluations` page renders, after reconciling the live session
+ * state against any currently-selected saved report.
+ *
+ *   - `selectedId === ""`  → live session (whatever the user ran).
+ *   - `selectedId !== ""`  → the saved report's persisted summaries, or
+ *                            null where the saved report didn't include
+ *                            that section.
+ *
+ * Kept as a separate pure helper so that the state-transition logic can be
+ * unit-tested without a React renderer.
+ */
+export interface EvaluationViewSelection {
+  readonly viewingSaved: boolean;
+  readonly retrieval: RetrievalSummary | null;
+  readonly answer: AnswerSummary | null;
+}
+
+export function selectEvaluationView(params: {
+  selectedId: string;
+  liveRetrieval: RetrievalSummary | null;
+  liveAnswer: AnswerSummary | null;
+  loadedReport: SavedReport | null;
+}): EvaluationViewSelection {
+  const viewingSaved = params.selectedId !== "";
+  if (!viewingSaved) {
+    return {
+      viewingSaved: false,
+      retrieval: params.liveRetrieval,
+      answer: params.liveAnswer,
+    };
+  }
+  // While the saved report is loading (`loadedReport` is null or points to
+  // a different id), fall back to empty-state cards — do NOT leak live
+  // session data through, or the user would see stale numbers from their
+  // session rendered under a saved-report label.
+  const match =
+    params.loadedReport && params.loadedReport.id === params.selectedId
+      ? params.loadedReport
+      : null;
+  return {
+    viewingSaved: true,
+    retrieval: match?.retrieval ?? null,
+    answer: match?.answer ?? null,
+  };
+}
+
 // ── threshold tiers (match the Gradio prototype) ────────────────────────────
 
 export function tierForRatio(value: number, green = 0.9, amber = 0.75): ThresholdTier {

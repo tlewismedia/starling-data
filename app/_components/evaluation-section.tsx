@@ -7,6 +7,10 @@ import { SERIF } from "./shared";
  * a slot for the pre-run hint or the rendered results. Matches the two-card
  * stacked layout from the Gradio prototype but styled with the app theme
  * (muted greens/creams, Card, SERIF title).
+ *
+ * When `runDisabled` is set (e.g. while viewing a saved report), the run
+ * button is rendered in a disabled state with a tooltip and the click
+ * handler is never invoked.
  */
 export function EvaluationSection({
   title,
@@ -16,6 +20,8 @@ export function EvaluationSection({
   hasResults,
   error,
   onRun,
+  runDisabled = false,
+  runDisabledReason,
   children,
 }: {
   title: string;
@@ -25,6 +31,8 @@ export function EvaluationSection({
   hasResults: boolean;
   error: string | null;
   onRun: () => void;
+  runDisabled?: boolean;
+  runDisabledReason?: string;
   children: React.ReactNode;
 }): React.JSX.Element {
   return (
@@ -46,6 +54,8 @@ export function EvaluationSection({
             onClick={onRun}
             running={running}
             progress={progress}
+            disabled={runDisabled}
+            disabledReason={runDisabledReason}
           />
         </div>
         {error && (

@@ -1,65 +1,37 @@
 "use client";
 
-import { useState } from "react";
 import { CategoryBarChart } from "./category-bar-chart";
 import { EvaluationSection } from "./evaluation-section";
 import { MetricCard } from "./metric-card";
 import {
   tierForJudge,
-  type AnswerStreamItem,
   type AnswerSummary,
 } from "./evaluation-types";
-import { streamNdjson } from "./ndjson-stream";
 
 /**
- * Answer-evaluation section. Triggers POST /api/evaluations/answer, streams
- * per-item judge scores for the progress indicator, and renders accuracy /
- * completeness / relevance cards plus a category bar chart when complete.
+ * Answer-evaluation section. Controlled by the `/evaluations` page: the
+ * page owns `running`, `progress`, `summary`, and `error`, and passes them
+ * in as props. The section stays pure-view so it can render either the
+ * live session state or the contents of a selected saved report without
+ * caring which.
  */
-export function AnswerEvaluation(): React.JSX.Element {
-  const [running, setRunning] = useState(false);
-  const [progress, setProgress] = useState<{
-    index: number;
-    total: number;
-  } | null>(null);
-  const [summary, setSummary] = useState<AnswerSummary | null>(null);
-  const [error, setError] = useState<string | null>(null);
-
-  async function handleRun() {
-    if (running) return;
-    setRunning(true);
-    setError(null);
-    setSummary(null);
-    setProgress(null);
-
-    try {
-      await streamNdjson("/api/evaluations/answer", (obj) => {
-        const record = obj as Record<string, unknown>;
-        if (record["error"] && !record["done"] && !("index" in record)) {
-          setError(String(record["error"]));
-          return;
-        }
-        if (record["done"]) {
-          setSummary(record["summary"] as AnswerSummary);
-          return;
-        }
-        const item = record as unknown as AnswerStreamItem;
-        if (typeof item.total === "number") {
-          // Server fires items in parallel, so item.index arrives out of
-          // order. Count completions locally for a monotonic counter.
-          setProgress((prev) => ({
-            index: (prev?.index ?? 0) + 1,
-            total: item.total,
-          }));
-        }
-      });
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Evaluation failed.");
-    } finally {
-      setRunning(false);
-    }
-  }
-
+export function AnswerEvaluation({
+  running,
+  progress,
+  summary,
+  error,
+  onRun,
+  runDisabled = false,
+  runDisabledReason,
+}: {
+  running: boolean;
+  progress: { index: number; total: number } | null;
+  summary: AnswerSummary | null;
+  error: string | null;
+  onRun: () => void;
+  runDisabled?: boolean;
+  runDisabledReason?: string;
+}): React.JSX.Element {
   const hasResults = summary !== null;
 
   return (
@@ -70,7 +42,9 @@ export function AnswerEvaluation(): React.JSX.Element {
       progress={progress}
       hasResults={hasResults}
       error={error}
-      onRun={() => void handleRun()}
+      onRun={onRun}
+      runDisabled={runDisabled}
+      runDisabledReason={runDisabledReason}
     >
       {summary && (
         <>

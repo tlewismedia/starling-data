@@ -2,19 +2,27 @@
  * "Run evaluation" button used on the /evaluations dashboard. Shows a
  * disabled loading state and a small progress indicator ("Evaluating test
  * N/M…") while items stream back from the server.
+ *
+ * When `disabled` is set (e.g. while viewing a saved report), the button
+ * is disabled and a `title` tooltip explains why. Clicks are swallowed.
  */
 export function RunEvaluationButton({
   onClick,
   running,
   progress,
   idleLabel = "Run evaluation",
+  disabled = false,
+  disabledReason,
 }: {
   onClick: () => void;
   running: boolean;
   progress: { index: number; total: number } | null;
   idleLabel?: string;
+  disabled?: boolean;
+  disabledReason?: string;
 }): React.JSX.Element {
   const busy = running;
+  const isDisabled = busy || disabled;
   const progressText =
     progress && progress.total > 0
       ? `Evaluating test ${progress.index}/${progress.total}…`
@@ -24,9 +32,10 @@ export function RunEvaluationButton({
       <button
         type="button"
         onClick={onClick}
-        disabled={busy}
+        disabled={isDisabled}
         aria-busy={busy}
         aria-label={busy ? progressText : idleLabel}
+        title={!busy && disabled ? disabledReason : undefined}
         className="group relative inline-flex items-center gap-2 overflow-hidden rounded-xl bg-[#2d4a35] px-5 py-2.5 text-[13px] font-medium text-white shadow-[0_2px_8px_-2px_rgba(45,74,53,0.35)] transition-all hover:bg-[#1f3526] hover:shadow-[0_4px_14px_-2px_rgba(45,74,53,0.45)] disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:bg-[#2d4a35]"
       >
         {busy ? <Spinner /> : null}
