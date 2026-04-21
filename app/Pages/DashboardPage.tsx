@@ -101,52 +101,52 @@ export function DashboardPage(): React.JSX.Element {
   const canOpenPanel = !!result;
 
   return (
-    <main className="relative flex min-w-0 flex-1 px-8 pb-24 pt-4">
+    <main className="relative flex min-w-0 flex-1 justify-center px-8 pb-24 pt-4">
       <FlockLoader active={loading} />
-      <div className="flex min-w-0 flex-1 gap-8">
-        <section className="min-w-0 max-w-[700px] flex-1 space-y-6">
-          <QuestionCard
-            query={query}
-            setQuery={setQuery}
-            onSubmit={() => void handleSubmit()}
-            onKeyDown={handleKeyDown}
-            loading={loading}
-            textareaRef={textareaRef}
+      <section className="mx-auto w-full min-w-0 max-w-[700px] space-y-6">
+        <QuestionCard
+          query={query}
+          setQuery={setQuery}
+          onSubmit={() => void handleSubmit()}
+          onKeyDown={handleKeyDown}
+          loading={loading}
+          textareaRef={textareaRef}
+        />
+
+        {/* TEMP_SAMPLE_QUESTIONS: Remove when issue #37 affordance is no longer needed. */}
+        <SampleQuestions
+          onSelect={(q) => {
+            setQuery(q);
+            textareaRef.current?.focus();
+          }}
+        />
+
+        {error && (
+          <Card className="p-5 text-[13px] text-[#8b3a2f]">{error}</Card>
+        )}
+
+        {result && (
+          <AnswerCard
+            answer={result.answer}
+            citations={result.citations}
+            retrievals={result.retrievals}
+            tier={tier}
+            onCitationClick={handleCitationClick}
           />
+        )}
 
-          {/* TEMP_SAMPLE_QUESTIONS: Remove when issue #37 affordance is no longer needed. */}
-          <SampleQuestions
-            onSelect={(q) => {
-              setQuery(q);
-              textareaRef.current?.focus();
-            }}
+        {result && runMeta && (
+          <TraceSection
+            runMeta={runMeta}
+            query={submittedQuery}
+            retrievals={result.retrievals}
+            citations={result.citations}
+            tier={tier}
           />
+        )}
+      </section>
 
-          {error && (
-            <Card className="p-5 text-[13px] text-[#8b3a2f]">{error}</Card>
-          )}
-
-          {result && (
-            <AnswerCard
-              answer={result.answer}
-              citations={result.citations}
-              retrievals={result.retrievals}
-              tier={tier}
-              onCitationClick={handleCitationClick}
-            />
-          )}
-
-          {result && runMeta && (
-            <TraceSection
-              runMeta={runMeta}
-              query={submittedQuery}
-              retrievals={result.retrievals}
-              citations={result.citations}
-              tier={tier}
-            />
-          )}
-        </section>
-
+      <div className="absolute right-0 top-0 h-full">
         <CitationsPanel
           result={result}
           open={panelOpen && canOpenPanel}
@@ -154,29 +154,29 @@ export function DashboardPage(): React.JSX.Element {
           highlightedChunkId={highlightedChunkId}
           pulseKey={pulseKey}
         />
-
-        {!panelOpen && canOpenPanel && (
-          <button
-            type="button"
-            onClick={() => setPanelOpen(true)}
-            aria-label="Open citations"
-            className="sticky top-6 self-start rounded-full bg-white/80 px-3 py-2 text-[11px] font-medium text-[#2d4a35] ring-1 ring-[#9cc9a9]/40 backdrop-blur-md transition-colors hover:bg-white"
-          >
-            <span className="inline-flex items-center gap-2">
-              <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
-                <path
-                  d="M7.5 3L4.5 6L7.5 9"
-                  stroke="currentColor"
-                  strokeWidth="1.4"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
-              </svg>
-              Citations ({result?.citations.length ?? 0})
-            </span>
-          </button>
-        )}
       </div>
+
+      {!panelOpen && canOpenPanel && (
+        <button
+          type="button"
+          onClick={() => setPanelOpen(true)}
+          aria-label="Open citations"
+          className="absolute right-8 top-6 rounded-full bg-white/80 px-3 py-2 text-[11px] font-medium text-[#2d4a35] ring-1 ring-[#9cc9a9]/40 backdrop-blur-md transition-colors hover:bg-white"
+        >
+          <span className="inline-flex items-center gap-2">
+            <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+              <path
+                d="M7.5 3L4.5 6L7.5 9"
+                stroke="currentColor"
+                strokeWidth="1.4"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
+            Citations ({result?.citations.length ?? 0})
+          </span>
+        </button>
+      )}
     </main>
   );
 }
