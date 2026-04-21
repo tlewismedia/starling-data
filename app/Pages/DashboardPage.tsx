@@ -104,7 +104,7 @@ export function DashboardPage(): React.JSX.Element {
     <main className="relative flex min-w-0 flex-1 px-8 pb-24 pt-4">
       <FlockLoader active={loading} />
       <div className="flex min-w-0 flex-1 gap-8">
-        <section className="min-w-0 flex-1 space-y-6">
+        <section className="min-w-0 max-w-[700px] flex-1 space-y-6">
           <QuestionCard
             query={query}
             setQuery={setQuery}
