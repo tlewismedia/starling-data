@@ -16,6 +16,7 @@ import { TraceSection } from "../_components/trace-section";
 import { CitationsPanel } from "../_components/citations-panel";
 import type { RunMeta } from "../_components/shared";
 import { appendHistory } from "../_components/history-store";
+import { FlockLoader } from "../_components/FlockLoader";
 
 export function DashboardPage(): React.JSX.Element {
   const [query, setQuery] = useState("");
@@ -101,6 +102,7 @@ export function DashboardPage(): React.JSX.Element {
 
   return (
     <main className="relative flex min-w-0 flex-1 px-8 pb-24 pt-4">
+      <FlockLoader active={loading} />
       <div className="flex min-w-0 flex-1 gap-8">
         <section className="min-w-0 flex-1 space-y-6">
           <QuestionCard

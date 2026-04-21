@@ -1,0 +1,77 @@
+- generic [ref=e1]:
+  - generic [ref=e2]:
+    - navigation "Primary" [ref=e3]:
+      - link "Copilot" [ref=e4] [cursor=pointer]:
+        - /url: /
+        - img [ref=e6]
+        - generic [ref=e9]: Copilot
+      - list [ref=e10]:
+        - listitem [ref=e11]:
+          - link "Dashboard" [ref=e12] [cursor=pointer]:
+            - /url: /
+            - img [ref=e13]
+            - generic [ref=e18]: Dashboard
+        - listitem [ref=e19]:
+          - link "Evaluations" [ref=e20] [cursor=pointer]:
+            - /url: /evaluations
+            - img [ref=e21]
+            - generic [ref=e24]: Evaluations
+        - listitem [ref=e25]:
+          - link "History" [ref=e26] [cursor=pointer]:
+            - /url: /history
+            - img [ref=e27]
+            - generic [ref=e30]: History
+        - listitem [ref=e31]:
+          - link "Library" [ref=e32] [cursor=pointer]:
+            - /url: /library
+            - img [ref=e33]
+            - generic [ref=e37]: Library
+    - main [ref=e39]:
+      - generic [ref=e40]:
+        - generic [ref=e41]:
+          - generic [ref=e42]:
+            - generic [ref=e43]:
+              - generic [ref=e44]: Question
+              - generic [ref=e45]: Press ⌘↵ to submit
+            - generic [ref=e46]:
+              - textbox "Question" [active] [ref=e48]:
+                - /placeholder: e.g. What are baseline requirements for cyber incident detection?
+                - text: How often do branch offices need to be inspected under FINRA 3110?
+              - button "Ask" [ref=e49] [cursor=pointer]:
+                - generic [ref=e50]:
+                  - text: Ask
+                  - img [ref=e51]
+          - generic [ref=e53]:
+            - generic [ref=e54]:
+              - generic [ref=e55]: Sample Questions
+              - generic [ref=e56]: Click to use
+            - list [ref=e57]:
+              - listitem [ref=e58]:
+                - button "Use sample question for Reg SHO" [ref=e59] [cursor=pointer]:
+                  - generic [ref=e60]: Reg SHO
+                  - generic [ref=e61]: When can a broker-dealer skip the locate requirement for a short sale?
+              - listitem [ref=e62]:
+                - button "Use sample question for FINRA 3110" [ref=e63] [cursor=pointer]:
+                  - generic [ref=e64]: FINRA 3110
+                  - generic [ref=e65]: How often do branch offices need to be inspected under FINRA 3110?
+              - listitem [ref=e66]:
+                - button "Use sample question for CIP" [ref=e67] [cursor=pointer]:
+                  - generic [ref=e68]: CIP
+                  - generic [ref=e69]: What documents count for verifying a new individual customer's identity under the CIP rule?
+              - listitem [ref=e70]:
+                - button "Use sample question for Marketing Rule" [ref=e71] [cursor=pointer]:
+                  - generic [ref=e72]: Marketing Rule
+                  - generic [ref=e73]: Can we show a gross-return figure in an ad without also showing net returns?
+              - listitem [ref=e74]:
+                - button "Use sample question for Rule 15c3-1" [ref=e75] [cursor=pointer]:
+                  - generic [ref=e76]: Rule 15c3-1
+                  - generic [ref=e77]: What's the lowest our net capital can go after we pay a dividend out to the parent?
+        - generic [ref=e78]:
+          - generic [ref=e79]:
+            - generic [ref=e81]: Citations
+            - button [ref=e82] [cursor=pointer]:
+              - img [ref=e83]
+          - generic [ref=e85]: Citations will appear here once you ask a question.
+  - button "Open Next.js Dev Tools" [ref=e91] [cursor=pointer]:
+    - img [ref=e92]
+  - alert [ref=e95]

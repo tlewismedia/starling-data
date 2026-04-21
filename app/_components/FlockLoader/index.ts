@@ -1,0 +1,5 @@
+export { default as FlockLoader } from './FlockLoader'
+export type { FlockLoaderProps } from './FlockLoader'
+export { FLOCK_PRESETS } from './presets'
+export type { FlockPreset, FlockPresetName } from './presets'
+export type { FlockState } from './flockState'
