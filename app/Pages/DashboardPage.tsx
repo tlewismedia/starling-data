@@ -31,7 +31,7 @@ export function DashboardPage(): React.JSX.Element {
   );
   const [pulseKey, setPulseKey] = useState(0);
 
-  const textareaRef = useRef<HTMLTextAreaElement | null>(null);
+  const textareaRef = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => {
     textareaRef.current?.focus();
@@ -75,7 +75,7 @@ export function DashboardPage(): React.JSX.Element {
     }
   }
 
-  function handleKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>) {
+  function handleKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
       void handleSubmit();
