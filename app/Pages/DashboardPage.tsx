@@ -89,6 +89,7 @@ export function DashboardPage(): React.JSX.Element {
   function handleCitationClick(n: number) {
     const chunkId = chunkIdForMarker(n, result?.citations ?? []);
     if (!chunkId) return;
+    setPanelOpen(true);
     setHighlightedChunkId(chunkId);
     setPulseKey((k) => k + 1);
   }
