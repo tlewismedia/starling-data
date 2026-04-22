@@ -29,6 +29,7 @@ export function DashboardPage(): React.JSX.Element {
     null,
   );
   const [pulseKey, setPulseKey] = useState(0);
+  const [panelOpen, setPanelOpen] = useState(true);
 
   const textareaRef = useRef<HTMLInputElement | null>(null);
 
@@ -55,6 +56,7 @@ export function DashboardPage(): React.JSX.Element {
         return;
       }
       setResult(data as QueryResponse);
+      setPanelOpen(true);
       appendHistory({
         askedAt: startedAtIso,
         query: askedQuery,
@@ -100,9 +102,9 @@ export function DashboardPage(): React.JSX.Element {
     <main className="relative flex min-w-0 flex-1 items-stretch justify-center gap-8 px-8 pb-24 pt-6">
       <FlockLoader active={loading} />
       <section
-        className={`flex w-full min-w-0 max-w-[700px] flex-col transition-opacity duration-200 ${
+        className={`flex w-full min-w-0 max-w-[700px] flex-col space-y-6 transition-opacity duration-200 ${
           result ? "justify-start" : "justify-center"
-        } ${loading ? "opacity-50" : "opacity-100"}`}
+        } ${loading ? "opacity-0" : "opacity-100 delay-200"}`}
       >
         <div className="space-y-2">
           <QuestionCard
@@ -150,8 +152,8 @@ export function DashboardPage(): React.JSX.Element {
 
       <CitationsPanel
         result={result}
-        open={!!result}
-        onClose={() => {}}
+        open={panelOpen && !!result}
+        onClose={() => setPanelOpen(false)}
         highlightedChunkId={highlightedChunkId}
         pulseKey={pulseKey}
       />
