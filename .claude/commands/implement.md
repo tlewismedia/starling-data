@@ -3,7 +3,7 @@ description: Dispatch the Implementer subagent on an isolated worktree for a Git
 argument-hint: <issue-number>
 ---
 
-Dispatch the Implementer subagent for issue #$ARGUMENTS in `tlewismedia/new-compliance-copilot`.
+Dispatch the Implementer subagent for issue #$ARGUMENTS in `tlewismedia/starling-data`.
 
 Before dispatching:
 

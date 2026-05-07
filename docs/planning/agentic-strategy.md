@@ -116,7 +116,7 @@ Concrete examples of good delegation:
 
 **Implementer invocation:**
 
-> "Read issue #42 in `tlewismedia/new-compliance-copilot` — the issue body is the spec. Implement on a worktree branch named `issue-42/<short-desc>`. Commits prefixed `AGENT:`. Write tests only if the spec asks. Do not change issue state or open a PR. Report back with the branch name, commit SHAs, and a one-paragraph summary."
+> "Read issue #42 in `tlewismedia/starling-data` — the issue body is the spec. Implement on a worktree branch named `issue-42/<short-desc>`. Commits prefixed `AGENT:`. Write tests only if the spec asks. Do not change issue state or open a PR. Report back with the branch name, commit SHAs, and a one-paragraph summary."
 
 **Reviewer invocation:**
 

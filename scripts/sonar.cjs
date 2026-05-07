@@ -5,8 +5,8 @@ const http = require("http");
 
 const SONAR_URL = process.env.SONAR_URL || "http://localhost:9000";
 const SONAR_TOKEN = process.env.SONAR_TOKEN;
-const PROJECT_KEY = "new-compliance-copilot";
-const PROJECT_NAME = "New Compliance Copilot";
+const PROJECT_KEY = "starling-data";
+const PROJECT_NAME = "Starling Data";
 
 if (!SONAR_TOKEN) {
   console.error(

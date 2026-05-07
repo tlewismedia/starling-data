@@ -3,7 +3,7 @@ description: Dispatch the Reviewer subagent to verify an implementation branch
 argument-hint: <issue-number>
 ---
 
-Dispatch the Reviewer subagent for issue #$ARGUMENTS in `tlewismedia/new-compliance-copilot`.
+Dispatch the Reviewer subagent for issue #$ARGUMENTS in `tlewismedia/starling-data`.
 
 Before dispatching:
 

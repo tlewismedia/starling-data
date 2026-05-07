@@ -13,7 +13,7 @@ Operational rules for every agent working in this repo.
 3. **Durable artifacts over chat.** Decisions live in GitHub issues, PRs, and commits — not in conversation history.
 4. **Human at the state transitions.** Humans confirm anything hard to reverse: posting a review, opening a PR, merging, closing.
 5. **Traceable provenance.** Every agent action is tagged so a human can see what was done by whom.
-6. **Always link.** When mentioning an issue or PR in conversation with the human, always include the full URL (e.g. `https://github.com/tlewismedia/new-compliance-copilot/issues/34`) — not just `#34`. The human should be able to click through without hunting.
+6. **Always link.** When mentioning an issue or PR in conversation with the human, always include the full URL (e.g. `https://github.com/tlewismedia/starling-data/issues/34`) — not just `#34`. The human should be able to click through without hunting.
 
 ---
 
@@ -164,7 +164,7 @@ The orchestrator invokes subagents via the `Agent` tool with complete, self-cont
 Agent({
   description: "Implement issue #<N>",
   subagent_type: "general-purpose",
-  prompt: `Read issue #<N> in tlewismedia/new-compliance-copilot — the body is the spec.
+  prompt: `Read issue #<N> in tlewismedia/starling-data — the body is the spec.
 
 Implement on a worktree branch named issue-<N>/<short-desc>.
 
