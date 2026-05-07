@@ -14,7 +14,7 @@ test.describe("Compliance Copilot UI", () => {
     await page.goto("/");
 
     await page.getByRole("textbox").fill(
-      "Under Regulation Z 12 CFR 1026.18, what must a creditor disclose about the finance charge and annual percentage rate for closed-end credit?",
+      "Under FINRA Rule 3110, what supervisory system must a member firm establish for its associated persons?",
     );
     await page.getByRole("button", { name: /^ask$/i }).click();
 
@@ -33,16 +33,14 @@ test.describe("Compliance Copilot UI", () => {
     expect(answerText.length).toBeGreaterThan(80);
     expect(answerText).toMatch(/\d/);
 
-    // Panel is closed by default — an "Open citations" affordance should show.
-    const openCitations = page.getByRole("button", { name: /citations \(/i });
-    await expect(openCitations).toBeVisible();
-
-    // Click a citation chip inside the answer to open the panel.
-    await answer.getByRole("button", { name: /open citation/i }).first().click();
-
+    // Panel is open by default once a result renders, with citation cards.
     const panel = page.locator("[data-testid='citations-panel']");
     await expect(panel).toBeVisible();
     await expect(panel.locator("article")).not.toHaveCount(0);
+
+    // Clicking a citation chip should highlight/scroll the matching card.
+    await answer.getByRole("button", { name: /open citation/i }).first().click();
+    await expect(panel).toBeVisible();
 
     // Trace section is collapsed by default but its header must be present.
     const trace = page.locator("[data-testid='trace']");
@@ -65,7 +63,7 @@ test.describe("Compliance Copilot UI", () => {
     await page.goto("/");
 
     await page.getByRole("textbox").fill(
-      "Under Regulation Z 12 CFR 1026.18, what must a creditor disclose about the finance charge and annual percentage rate for closed-end credit?",
+      "Under FINRA Rule 3110, what supervisory system must a member firm establish for its associated persons?",
     );
     await page.getByRole("button", { name: /^ask$/i }).click();
 

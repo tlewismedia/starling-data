@@ -7,7 +7,13 @@ const eslintConfig = [
   ...nextTypescript,
   prettier,
   {
-    ignores: [".next/**", "node_modules/**"],
+    files: ["**/*.cjs"],
+    rules: {
+      "@typescript-eslint/no-require-imports": "off",
+    },
+  },
+  {
+    ignores: [".next/**", "node_modules/**", ".claude/**"],
   },
 ];
 

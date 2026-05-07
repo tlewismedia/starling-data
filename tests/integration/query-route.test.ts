@@ -12,7 +12,7 @@ describe.skipIf(!process.env.PINECONE_API_KEY || !process.env.OPENAI_API_KEY)(
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           query:
-            "Under Regulation Z 12 CFR 1026.18, what must a creditor disclose about the finance charge and annual percentage rate for closed-end credit?",
+            "Under FINRA Rule 3110, what supervisory system must a member firm establish for its associated persons?",
         }),
       });
       const res = await POST(req);
