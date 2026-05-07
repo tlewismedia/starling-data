@@ -278,7 +278,14 @@ export function EvaluationsPage(): React.JSX.Element {
     loadedReport,
   });
   const viewingSaved = view.viewingSaved;
-  const runDisabledReason = viewingSaved ? "Viewing a saved report" : undefined;
+  // Run is gated in production to avoid surprise OpenAI/Pinecone spend from
+  // public traffic. NODE_ENV is inlined by Next at build time, so this works
+  // in client components without a dedicated env var. Clicking Run while a
+  // saved report is selected is fine — the handlers reset selectedId to ""
+  // so the live state takes over the cards.
+  const isProd = process.env.NODE_ENV === "production";
+  const runDisabled = isProd;
+  const runDisabledReason = isProd ? "Disabled in production" : undefined;
   const retrievalShown = view.retrieval;
   const answerShown = view.answer;
 
@@ -329,7 +336,7 @@ export function EvaluationsPage(): React.JSX.Element {
           summary={retrievalShown}
           error={viewingSaved ? null : retrievalError}
           onRun={() => void handleRunRetrieval()}
-          runDisabled={viewingSaved}
+          runDisabled={runDisabled}
           runDisabledReason={runDisabledReason}
         />
         <AnswerEvaluation
@@ -338,7 +345,7 @@ export function EvaluationsPage(): React.JSX.Element {
           summary={answerShown}
           error={viewingSaved ? null : answerError}
           onRun={() => void handleRunAnswer()}
-          runDisabled={viewingSaved}
+          runDisabled={runDisabled}
           runDisabledReason={runDisabledReason}
         />
       </div>
