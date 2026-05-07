@@ -76,10 +76,10 @@ You'll receive:
 - The issue body (which is the spec)
 - The code diff (or access to the branch)
 - Test results (if available)
-- `plan.md` and `agents.md` for architectural context
+- `docs/planning/plan.md` and `docs/planning/agents.md` for architectural context
 
 Read all context before reviewing.
 
-## From agentic-strategy.md
+## From docs/planning/agentic-strategy.md
 
 "A reviewer's 'APPROVED' is worthless if the test suite is red." Verify tests pass. If tests don't exist but the spec required them, request they be written.

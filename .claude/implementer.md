@@ -43,7 +43,7 @@ Report back with:
 
 ## Implementation principles
 
-From `agentic-strategy.md`:
+From `docs/planning/agentic-strategy.md`:
 
 - **Test-driven**: Write tests that verify the acceptance criteria
 - **Small commits**: Each commit should be a logical unit
@@ -55,7 +55,7 @@ From `agentic-strategy.md`:
 You'll receive:
 
 - The issue number and body (which is the spec — scope, acceptance criteria, non-goals, implementation notes all live there)
-- Relevant context from `plan.md`, `agents.md`
+- Relevant context from `docs/planning/plan.md`, `docs/planning/agents.md`
 - The current state of the repository
 
 Read all context before starting implementation.

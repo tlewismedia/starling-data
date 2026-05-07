@@ -1,17 +1,19 @@
-# Compliance Copilot
+# Starling Data
 
 An adaptive RAG compliance copilot — grounded answers, cited sources.
 
+**Live demo:** [tomlewis.dev/projects/starling-data](https://tomlewis.dev/projects/starling-data/)
+
 ## Purpose
 
-Compliance Copilot is a regulatory-RAG demo built around a fictional broker-dealer / RIA ("Kestrel Securities, LLC"). It answers natural-language compliance questions by retrieving from a curated corpus and generating an answer grounded in inline citations. The goal is a portfolio-grade demonstration of:
+Starling Data answers natural-language compliance questions for financial institutions by retrieving from a curated regulatory corpus and generating answers grounded in inline citations. The reference deployment is built around a representative broker-dealer / RIA ("Kestrel Securities, LLC"). The product is engineered around four principles:
 
-- **Grounded answers** — every claim is backed by a retrieved source chunk; no fabrication.
-- **Auditability** — each response carries a trace (which chunks were retrieved, which were cited).
-- **Evaluation discipline** — a benchmark suite measures retrieval precision and answer faithfulness, with results committed and regression-checked.
-- **Adaptive routing** (planned) — query complexity will drive the retrieval strategy.
+- **Grounded answers** — every claim is backed by a retrieved source chunk; the model refuses rather than fabricates.
+- **Auditability** — each response carries a trace of which chunks were retrieved and which were cited, so a compliance officer can verify the reasoning.
+- **Evaluation discipline** — a benchmark suite measures retrieval precision and answer faithfulness; results are committed and regression-checked on every change.
+- **Adaptive routing** — query complexity drives the retrieval strategy, so a simple lookup and a multi-document gap analysis don't pay the same cost.
 
-The corpus mixes **external regulation** (SEC 15c3-1/15c3-3, Reg SHO, Rule 605/606; FINRA Rules 5310/3110/3130; Advisers Act §206, Marketing Rule, Custody Rule; FinCEN BSA/AML), **internal Kestrel policies** (best-ex, code of ethics, AML, market-access controls, supervision), and **enforcement examples** (FINRA AWC). See [`project-goals.md`](./project-goals.md) for the full scope.
+The corpus mixes **external regulation** (SEC 15c3-1/15c3-3, Reg SHO, Rule 605/606; FINRA Rules 5310/3110/3130; Advisers Act §206, Marketing Rule, Custody Rule; FinCEN BSA/AML), **internal Kestrel policies** (best-ex, code of ethics, AML, market-access controls, supervision), and **enforcement examples** (FINRA AWC). See [`project-goals.md`](./docs/planning/project-goals.md) for the full scope.
 
 ## Architecture
 
@@ -91,31 +93,57 @@ scripts/
 ### Pipeline flow
 
 ```
-   ┌──────────┐   query   ┌──────────────┐   retrievals[]   ┌──────────────┐
-   │  client  │──────────▶│  retrieve    │─────────────────▶│  generate    │
-   │ /api/query│          │  (Pinecone)  │                  │   (OpenAI)   │
-   └──────────┘           └──────────────┘                  └──────┬───────┘
-                                                                   │
-                            { answer, citations, retrievals } ◀────┘
+   ┌───────────┐   query   ┌──────────────┐   retrievals[]   ┌──────────────┐
+   │  client   │──────────▶│  retrieve    │─────────────────▶│  generate    │
+   │ /api/query│           │  (Pinecone)  │                  │   (OpenAI)   │
+   └───────────┘           └──────────────┘                  └──────┬───────┘
+                                                                    │
+                             { answer, citations, retrievals } ◀────┘
 ```
 
 The graph is lazy-initialized on first query so build doesn't construct SDK clients. Citations are extracted as `[^N]` markers from the model output and renumbered by first-seen order.
 
-### Data path
+### Data ingestion
 
-1. **Ingest** (`pnpm ingest`): each markdown doc is parsed (front-matter + body), chunked, embedded, and upserted to Pinecone with rich metadata (`authority`, `citation_id`, `paragraph_path`, `version_status`, `topic_tags`, …) so retrieval results carry pinpoint structure.
-2. **Query**: the retrieve node hydrates `Retrieval[]` from Pinecone hits; the generate node formats them into a numbered context block and prompts the LLM to cite or refuse.
+Run with `pnpm ingest`. The pipeline turns `corpus/*.md` into searchable vector records in Pinecone in five steps:
 
-### Environment
+1. **Discover & parse.** Each markdown file is read with `gray-matter`, splitting YAML front-matter (`title`, `authority`, `citation_id`, `jurisdiction`, `doc_type`, `effective_date`, `source_url`, `version_status`, `topic_tags`) from the markdown body. Files missing required front-matter are skipped with a structured log line; unexpected errors fail the run fast.
+2. **Chunk.** `chunkDocument` dispatches on `authority` and runs one of two modes:
+   - **Regulatory mode** (SEC / FINRA / MSRB) — paragraph-marker-aware. The chunker tracks both a heading stack and a marker stack `(a)` → `(1)` → `(i)` (FINRA Supplementary Material `.01`–`.99`, MSRB `(a)` → `(i)`), emitting **one chunk per terminal paragraph** so citations can pinpoint the exact subsection. Ambiguous Roman markers like `(i)`, `(v)`, `(x)` are resolved against the current stack. Tiny header-only frames are merged into their child or dropped to keep retrieval signal clean.
+   - **Fallback mode** (Kestrel / FinCEN / internal docs) — splits on H1/H2/H3 headers and packs sentences into chunks up to the token budget.
+3. **Pack & overlap.** Both modes target ~500 tokens (~375 words) per chunk with ~50-token (~38-word) overlap between adjacent chunks. The sentence splitter never breaks mid-sentence or mid-citation (e.g. `12 CFR 1026.18` stays intact).
+4. **Assemble records.** Each chunk gets a deterministic ID — regulatory: `${citationId}::${paragraphPath}::p${N}`, fallback: `${citationId}::${slugifiedHeadingPath}` — and a flat metadata payload (no nested objects) carrying `heading_path`, `paragraph_path`, `version_status`, `topic_tags`, `effective_date`, etc. This rich metadata is what lets retrieval surface pinpoint citations and lets evaluation score answers against expected chunk IDs.
+5. **Embed & upsert.** Chunks are batched in groups of 100 and sent to Pinecone via the integrated-embedding API (`index.upsertRecords`) — Pinecone embeds the `chunk_text` field server-side, so the ingest script never touches the embedding model directly.
 
-Variables documented in [`.env.example`](./.env.example):
+### Query path
 
-| Var | Purpose |
-|---|---|
-| `OPENAI_API_KEY` | Embeddings + generation |
-| `PINECONE_API_KEY` | Vector search |
-| `PINECONE_INDEX` | Pinecone index name |
-| `PUSHOVER_USER` / `PUSHOVER_TOKEN` | Optional — cap-hit notifications |
+The retrieve node hydrates `Retrieval[]` from Pinecone hits (top-5 by default); the generate node formats them into a numbered context block and prompts the LLM to either cite each claim with a `[^N]` marker or refuse the answer. Citations are extracted from the model output and renumbered by first-seen order before being returned to the client.
+
+## Evaluation
+
+Compliance answers are only useful if they're correct, and "correct" in this domain means a specific subsection of a specific rule — not a paraphrase that's directionally right. Every change to the chunker, the prompt, the model, or the corpus is measured against a benchmark before it ships, so quality only moves forward.
+
+### Benchmark
+
+Each item in `eval/benchmarks/pilot.yaml` is a hand-labeled question with the source chunk(s) it should retrieve, the load-bearing keywords a correct answer must convey, and a canonical reference answer drafted from those chunks. Items are tagged with a `category` (Direct fact, Spanning, Comparative, Numerical, Relationship, Holistic) so scores can be sliced by question type and weak archetypes spotted early.
+
+After any corpus or chunker change, `pnpm verify-eval` confirms every `expected_chunk_id` still resolves to a real chunk — preventing silent drift between the benchmark and the index.
+
+### Two evaluation tracks
+
+The Evaluations page (`/evaluations`) and the API behind it run two independent passes over the benchmark:
+
+**Retrieval quality** — does the right source come back, and at what rank? For each item the system pulls the top-10 from Pinecone and computes:
+
+- **MRR** (mean reciprocal rank) — the right source coming back somewhere in the top-10 isn't enough; we want it ranked first, because the LLM pays most attention to what sits at the top of its context. MRR is a score from 0 to 1 capturing how *early* the must-have content surfaces in the ranked list. For each load-bearing term from the cited source (e.g. `"quarterly"`, `"payment for order flow"`) we find the rank of the first chunk containing it — position #1 scores 1.0, #2 scores 0.5, #3 scores 0.33 — and average across the question's terms.
+- **nDCG@10** — MRR only credits the *first* hit per term, but ideally the whole top-10 should be useful: deeper relevant chunks give the LLM corroborating context, while irrelevant ones just distract. nDCG@10 is a quality score from 0 to 1 for the entire top-10 ranking, weighted so hits at the top count more than hits further down. We compute it by scoring each chunk for relevance (does it contain a load-bearing term?), discounting by position, and dividing by the score the *ideal* ordering would have produced — so the result reads as a percentage of perfect.
+- **Keyword coverage** — before ranking matters, we have to check the LLM is even getting the right ingredients: if the load-bearing terms aren't anywhere in the retrieved context, no amount of clever generation will produce a correct answer. Keyword coverage is a score from 0 to 1 measuring the fraction of must-have terms that appear *somewhere* in the retrieved set, ignoring rank. Low coverage means the retriever isn't finding the right material at all; high coverage paired with a low MRR means it's finding the material but ranking it below distractors.
+
+**Answer quality** — given the retrieved context, does the generated answer hold up? Each item runs the full pipeline and the resulting answer is graded by an LLM-as-judge (`gpt-4.1-nano` by default, overridable via `OPENAI_JUDGE_MODEL`) on three axes:
+
+- **Accuracy** — does the answer match the reference, with the right rule cited?
+- **Completeness** — does it cover the load-bearing facts the reference covers?
+- **Relevance** — does it answer the question that was asked?
 
 ## Roadmap
 
@@ -133,16 +161,12 @@ Variables documented in [`.env.example`](./.env.example):
 
 ### Planned
 
-Tracked across [`plan.md`](./plan.md), [`eval-plan.md`](./eval-plan.md), and [`corpus-improvement-plan.md`](./corpus-improvement-plan.md).
-
-- **M4 — Full eval harness** (issues E1–E5):
-  - Scale benchmark to ≥50 hand-labeled items across archetypes (exact-lookup, cross-doc, cross-authority, should-refuse, version-hygiene, enforcement-grounded, RIA-specific).
-  - Pinpoint precision@5 (chunk-ID exact) + doc-level precision@5.
-  - LLM-as-judge faithfulness with citation-paragraph awareness.
-  - Refusal accuracy, cross-doc coverage, version-hygiene scorers.
-  - GitHub Action regression gate (`pnpm eval --compare-baseline`).
-- **M5 — Adaptive routing.** Query classifier node, conditional edges (single-hop vs. multi-hop vs. should-refuse), confidence scoring on answers.
-- **Jobs 2–5** (post-MVP, see [`project-goals.md`](./project-goals.md)): cross-document gap analysis, examination-package assembly with HITL, web-augmented retrieval for change monitoring, multi-turn conversation.
+- **Production-grade evaluation.** Scale the benchmark to a broader set of hand-labeled questions, add faithfulness and refusal scorers, and gate every deploy on a CI regression check so quality only moves forward.
+- **Adaptive query routing.** Classify each query and route it to the right retrieval strategy — fast path for simple lookups, multi-hop retrieval for cross-document analysis, explicit refusal when the corpus can't support an answer.
+- **Cross-document gap analysis.** Compare an institution's internal policies against the external rules they're meant to implement, and flag the gaps.
+- **Examination preparation.** Assemble the document packages a regulator would request, with human-in-the-loop review before anything leaves the building.
+- **Regulatory change monitoring.** Web-augmented retrieval for time-sensitive queries, with proactive alerts when rules change.
+- **Multi-turn conversations.** Carry context across follow-up questions so users can drill into a topic naturally.
 
 ## Prerequisites
 

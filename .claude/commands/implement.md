@@ -9,10 +9,10 @@ Before dispatching:
 
 1. Fetch the issue body via the GitHub MCP — the body is the spec.
 2. Sanity-check that the body contains scope, acceptance criteria, and non-goals. If the body is thin or ambiguous, stop and ask the human to flesh it out before dispatching.
-3. Read `plan.md` and any referenced code so you understand the shape of the change.
+3. Read `docs/planning/plan.md` and any referenced code so you understand the shape of the change.
 4. Pick a short-description slug for the branch name: `issue-$ARGUMENTS/<short-desc>`.
 
-Invoke the Implementer via the `Agent` tool using the dispatch template in `agents.md` (`Dispatching Implementer`). The subagent runs with `isolation: "worktree"` so it works on an isolated copy.
+Invoke the Implementer via the `Agent` tool using the dispatch template in `docs/planning/agents.md` (`Dispatching Implementer`). The subagent runs with `isolation: "worktree"` so it works on an isolated copy.
 
 The prompt must:
 
