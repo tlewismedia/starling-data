@@ -17,7 +17,8 @@
     "test:unit": "vitest run tests/unit",
     "test:integration": "vitest run tests/integration",
     "test:e2e": "next build && playwright test",
-    "e2e:start": "next start"
+    "e2e:start": "next start",
+    "sonar": "node scripts/sonar.cjs"
   },
   "dependencies": {
     "@langchain/core": "^1.1.39",
@@ -45,6 +46,7 @@
     "js-yaml": "^4.1.0",
     "postcss": "^8.4.49",
     "prettier": "^3.3.3",
+    "sonarqube-scanner": "^4.3.6",
     "tailwindcss": "^3.4.17",
     "tsx": "^4.21.0",
     "typescript": "^5.9.0",
