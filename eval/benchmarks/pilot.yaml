@@ -12,7 +12,10 @@
 #               Not scored today — sits ready for LLM-as-judge or
 #               embedding-similarity comparison.
 #     category: one of {Direct fact, Spanning, Comparative, Numerical,
-#               Relationship, Holistic} — used for slicing scores by question type
+#               Relationship, Holistic, Multi-hop} — used for slicing scores
+#               by question type. `Multi-hop` items require evidence from
+#               two or more chunks across different documents (or different
+#               paragraphs of the same regulation) to answer fully.
 #     notes: free-text — what the item is testing
 #
 # Chunk ID format (see ingest/ARCHITECTURE.md):
@@ -588,3 +591,206 @@
     may not be represented proportionately in a venue's aggregate Rule 605
     report.
   notes: "Comparative. 605 alone vs. 605 + own-flow analysis — directly mirrors the AWC and Kestrel exam-letter findings."
+
+# ---------------------------------------------------------------------------
+# Multi-hop items — each requires evidence from two or more chunks, drawn
+# either from different documents (reg + firm policy, finding + remediation,
+# enforcement + exam) or different paragraphs of the same regulation.
+# Pure-similarity retrieval typically surfaces only one of the two chunks
+# strongly; these items measure whether the retriever can assemble both.
+# ---------------------------------------------------------------------------
+
+- query: "Kestrel's best-execution policy says its sixth factor goes 'beyond the regulatory baseline.' What is that FINRA Rule 5310 baseline, and what does Kestrel add on top of it?"
+  category: Multi-hop
+  expected_chunk_ids:
+    - "FINRA-Rule-5310::.02::p0"
+    - "Kestrel-Best-Execution-Policy::kestrel-best-execution-policy-2.-the-best-execution-standard"
+  keywords:
+    - "security-by-security"
+    - "order-size"
+    - "payment for order flow"
+    - "internalization"
+    - "factor 6"
+    - "Rule 5310(a)"
+  reference_answer: |
+    The FINRA Rule 5310(a) baseline weighs the character of the market,
+    size and type of transaction, number of markets checked, accessibility
+    of the quotation, and the terms and conditions of the order; Supplementary
+    Material .02 requires this review at least quarterly on a security-by-
+    security, order-type, and order-size basis. Kestrel's Best Execution
+    Policy §2 elevates an explicit sixth factor above that baseline: the
+    existence and economics of any payment-for-order-flow, internalization,
+    or affiliated-routing arrangement.
+  notes: "Multi-hop reg+policy. Cannot answer 'what's beyond the baseline' without retrieving both the FINRA factors AND Kestrel's elevated sixth factor."
+
+- query: "FINRA's 2025 exam letter cited Kestrel for a Rule 5310 regular-and-rigorous-review deficiency. What was the specific finding, and what remediation actions did the WSP Annual Certification report for it?"
+  category: Multi-hop
+  expected_chunk_ids:
+    - "Kestrel-FINRA-Exam-Letter-2025::finra-routine-examination-exit-letter-kestrel-securities-2025-cycle-2.-finding-1-rule-5310-regular-and-rigorous-review-finding"
+    - "Kestrel-WSP-Annual-Cert-2025::supporting-report-1.-executive-summary"
+  keywords:
+    - "aggregate Rule 605"
+    - "security-by-security"
+    - "payment-for-order-flow"
+    - "September 2025"
+    - "committee chairmanship"
+    - "Independent Quantitative Reviewer"
+    - "analytics pack"
+  reference_answer: |
+    The 2025 FINRA exam Finding 1 cited Kestrel under Rule 5310 Supplementary
+    Material .02 for reviewing only aggregate Rule 605 statistics rather than
+    its own customer order flow on a security-by-security, order-type, and
+    order-size basis, and for failing to substantively evaluate whether
+    payment-for-order-flow influenced routing to two wholesale market makers.
+    The 2025 WSP Annual Certification supporting report §1 documents the
+    remediation arc: a September 2025 Best Execution Policy rewrite, a change
+    in committee chairmanship, engagement of an Independent Quantitative
+    Reviewer, and a redesigned analytics pack — operational at year-end with
+    the FINRA closing letter anticipated in Q2 2026.
+  notes: "Multi-hop finding→remediation. The exam letter names the gap; the WSP cert lists the fixes. A complete answer needs both."
+
+- query: "How do the best-execution deficiencies in the FINRA AWC enforcement action overlap with FINRA's 2025 findings against Kestrel?"
+  category: Multi-hop
+  expected_chunk_ids:
+    - "FINRA-AWC-2023056789201::finra-office-of-hearing-officers-iv.-facts-and-violative-conduct-a.-rule-5310-best-execution"
+    - "Kestrel-FINRA-Exam-Letter-2025::finra-routine-examination-exit-letter-kestrel-securities-2025-cycle-2.-finding-1-rule-5310-regular-and-rigorous-review-finding"
+  keywords:
+    - "aggregate Rule 605"
+    - "security-by-security"
+    - "order-size"
+    - "payment for order flow"
+    - "boilerplate"
+    - "wholesale market makers"
+  reference_answer: |
+    Both proceedings identify the same Rule 5310 failure pattern: relying on
+    aggregate Rule 605 statistics from receiving venues rather than analyzing
+    the firm's own customer order flow on a security-by-security, order-type,
+    and order-size basis, and not substantively evaluating whether payment-
+    for-order-flow influenced routing. The AWC additionally flagged
+    boilerplate "acceptable execution quality" documentation, while the
+    Kestrel exam letter specifically highlighted concentration of retail
+    market-order flow to two wholesale market makers with PFOF arrangements.
+  notes: "Multi-hop comparative across two enforcement/exam artifacts. Tests whether retrieval surfaces both regulatory documents for the same gap pattern."
+
+- query: "If a new individual customer's identity can't be verified using documents, what does the FinCEN CIP rule allow as alternatives, and what does Kestrel's AML program actually do when verification fails?"
+  category: Multi-hop
+  expected_chunk_ids:
+    - "31-CFR-Part-1023::1023.220-customer-identification-program-cip-.-a-minimum-requirements.-3-verification."
+    - "Kestrel-AML-Program::kestrel-aml-program-3.-customer-identification-program-cip-3.3-failure-to-verify"
+  keywords:
+    - "non-documentary"
+    - "consumer reporting agency"
+    - "public database"
+    - "restricted basis"
+    - "30 days"
+    - "no withdrawals"
+    - "SAR-SF"
+  reference_answer: |
+    Under FinCEN CIP Rule 31 CFR 1023.220(a)(3), a broker-dealer that cannot
+    rely on documentary verification may use non-documentary methods —
+    comparing customer information against a consumer reporting agency,
+    public database, or other independent source. When Kestrel cannot form
+    a reasonable belief that it knows the customer's true identity, AML
+    program §3.3 directs the firm to refuse the account, open it on a
+    restricted basis (no withdrawals, margin, or wire transfers for 30 days),
+    or close it, with a SAR-SF filed where the facts warrant.
+  notes: "Multi-hop reg+policy. The rule defines available verification methods; the policy specifies what to do when none succeed."
+
+- query: "For a bona-fide market maker, does Reg SHO treat the locate-requirement exception and the fail-to-deliver close-out deadline the same way, or differently?"
+  category: Multi-hop
+  expected_chunk_ids:
+    - "17-CFR-242.203::(b)(2)(i)::p0"
+    - "17-CFR-242.204::(a)::p0"
+  keywords:
+    - "does not apply"
+    - "bona-fide market making"
+    - "settlement day following"
+    - "third consecutive"
+    - "borrow or purchase"
+  reference_answer: |
+    Reg SHO treats bona-fide market making favorably in both places, but
+    asymmetrically. Rule 203(b)(2)(i) exempts a market maker from the
+    pre-sale locate requirement entirely. Rule 204(a) does not exempt the
+    market maker from closing out a fail-to-deliver — it only extends the
+    deadline: the close-out (borrow or purchase) is required by the third
+    consecutive settlement day following settlement date, rather than the
+    settlement day immediately following.
+  notes: "Multi-hop within-reg, cross-paragraph. Same actor (BFMM), two separate rules with different treatment. Tests cross-paragraph retrieval within a regulation series."
+
+- query: "What information must we capture on a brokerage order memorandum under Rule 17a-3, and what storage media can we use to preserve those records under Rule 17a-4?"
+  category: Multi-hop
+  expected_chunk_ids:
+    - "17-CFR-240.17a-3::(v)::p0"
+    - "17-CFR-240.17a-4::(f)::p0"
+  keywords:
+    - "terms and conditions"
+    - "time of receipt"
+    - "time of execution"
+    - "WORM"
+    - "audit-trail"
+    - "time-stamped"
+    - "original record"
+  reference_answer: |
+    Rule 17a-3(a)(6) requires the order memorandum to capture the terms and
+    conditions of the order, the account it was entered for, the time of
+    receipt, and the time of execution or cancellation, with block-order
+    allocations documented post-execution. Rule 17a-4(f) lets a broker-dealer
+    preserve those records either on traditional WORM media or, since the
+    2022 amendments, on editable storage that maintains a time-stamped
+    audit trail of every modification, preserves the original record, and
+    enforces appropriate access controls.
+  notes: "Multi-hop within-reg, cross-rule. 17a-3 says what to record; 17a-4 says how to preserve it. Both needed for a complete answer to a records-lifecycle question."
+
+- query: "Advisers Act Rule 204A-1 requires access persons to file quarterly reports on personal trades. What does Kestrel's Code of Ethics add on top of that before a trade can even happen?"
+  category: Multi-hop
+  expected_chunk_ids:
+    - "17-CFR-275.204A-1::(b)(2)::p0"
+    - "Kestrel-Code-of-Ethics::kestrel-code-of-ethics-and-personal-trading-policy-4.-personal-trading-4.3-pre-clearance"
+  keywords:
+    - "30 days"
+    - "calendar quarter"
+    - "CUSIP"
+    - "pre-clearance"
+    - "individual equity"
+    - "IPO"
+    - "private placement"
+    - "trading day"
+    - "market close"
+  reference_answer: |
+    Rule 204A-1(b)(2) is a reporting requirement: access persons file
+    transaction reports within 30 days after each calendar quarter,
+    identifying the date, title and type (with CUSIP and ticker), nature,
+    price, and broker for each reportable-security trade. Kestrel's Code of
+    Ethics §4.3 layers a pre-trade gate on top of that: pre-clearance from
+    Compliance is required before any individual equity, corporate or
+    municipal debt trade, IPO participation, private placement, or
+    reportable-fund transaction, with approvals valid only for the trading
+    day on which they issue and lapsing at market close.
+  notes: "Multi-hop reg+policy, 'additive' pattern. The rule prescribes after-the-fact reporting; the policy adds a before-the-fact approval. Retrieving only one misses half the picture."
+
+- query: "How do SEC Rule 15c3-3's possession-or-control requirement and the 15c3-3a customer reserve formula work together to protect customer assets?"
+  category: Multi-hop
+  expected_chunk_ids:
+    - "17-CFR-240.15c3-3::(b)::p0"
+    - "17-CFR-240.15c3-3a::240.15c3-3a-customer-reserve-formula."
+  keywords:
+    - "fully-paid"
+    - "excess-margin"
+    - "clearing corporation"
+    - "DTC"
+    - "net credit balance"
+    - "credits exceed debits"
+    - "Special Reserve Bank Account"
+    - "cash or qualified securities"
+  reference_answer: |
+    Rule 15c3-3(b) requires a broker-dealer to obtain and maintain physical
+    possession or control of all fully-paid and excess-margin customer
+    securities at a clearing corporation (e.g., DTC), a bank custodian, the
+    firm's own vault, or another Commission-approved location. Rule 15c3-3a
+    complements this on the cash side: any net credit balance (customer
+    credits exceeding customer debits in the reserve computation) must be
+    deposited in cash or qualified securities into the Special Reserve Bank
+    Account for the Exclusive Benefit of Customers on each prescribed
+    deposit date. Together they segregate customer securities and customer
+    cash from firm assets.
+  notes: "Multi-hop within-reg, customer-protection chain. Possession/control covers securities; the reserve formula covers cash. Both chunks needed for the 'work together' framing."
