@@ -15,6 +15,7 @@ import { z } from "zod";
 import OpenAI from "openai";
 import { zodResponseFormat } from "openai/helpers/zod";
 import { Pinecone } from "@pinecone-database/pinecone";
+import { getRetrievalGraph } from "../pipeline/graph";
 
 export const RETRIEVAL_K = 10;
 export const JUDGE_MODEL =
@@ -70,24 +71,29 @@ export function loadBenchmark(path: string): BenchmarkItem[] {
 }
 
 // ---------------------------------------------------------------------------
-// Retrieval (direct Pinecone call, separate from the graph's top-5)
+// Retrieval — routed through the production retrieval graph
 // ---------------------------------------------------------------------------
 
+/**
+ * Run the production retrieval pipeline (retrieve → citation-follow) for one
+ * query and return its chunks. The generate node is intentionally not part of
+ * this path, so the eval can score what the pipeline actually surfaces without
+ * paying for an OpenAI generation call per benchmark item.
+ *
+ * The `k` cap is applied client-side: the retrieve node already topK-bounds
+ * its own Pinecone call (5) and citation-follow caps its hop (FOLLOW_TOP_K),
+ * so the merged set is naturally ≤ 10. Slicing to `k` enforces the metric's
+ * declared horizon (RETRIEVAL_K).
+ */
 export async function retrieveForEval(
-  index: ReturnType<Pinecone["index"]>,
   query: string,
   k: number,
 ): Promise<EvalChunk[]> {
-  const response = await index.searchRecords({
-    query: { topK: k, inputs: { text: query } },
-  });
-  return response.result.hits.map((hit) => {
-    const f = hit.fields as Record<string, unknown>;
-    return {
-      chunkId: hit._id,
-      text: String(f["chunk_text"] ?? ""),
-    };
-  });
+  const state = await getRetrievalGraph().invoke({ query });
+  return state.retrievals.slice(0, k).map((r) => ({
+    chunkId: r.chunkId,
+    text: r.text,
+  }));
 }
 
 // ---------------------------------------------------------------------------

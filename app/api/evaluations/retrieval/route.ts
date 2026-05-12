@@ -2,7 +2,6 @@ import { NextResponse } from "next/server";
 import { resolve } from "path";
 import {
   RETRIEVAL_K,
-  createPineconeIndex,
   loadBenchmark,
   retrieveForEval,
   scoreKeywordMetrics,
@@ -25,14 +24,12 @@ export const maxDuration = 300;
  */
 export async function POST(): Promise<Response> {
   let items;
-  let pineconeIndex;
   try {
     const benchmarkPath = resolve(
       process.cwd(),
       "eval/benchmarks/pilot.yaml",
     );
     items = loadBenchmark(benchmarkPath);
-    pineconeIndex = createPineconeIndex();
   } catch (err) {
     console.error("[api/evaluations/retrieval] setup error:", err);
     return NextResponse.json(
@@ -44,7 +41,6 @@ export async function POST(): Promise<Response> {
   const encoder = new TextEncoder();
   const total = items.length;
   const loadedItems = items;
-  const index = pineconeIndex;
 
   const stream = new ReadableStream<Uint8Array>({
     async start(controller) {
@@ -67,7 +63,7 @@ export async function POST(): Promise<Response> {
         // concurrently cuts total time from ~15s to ~1s for 30 items.
         await Promise.all(
           loadedItems.map(async (item, i) => {
-            const topK = await retrieveForEval(index, item.query, RETRIEVAL_K);
+            const topK = await retrieveForEval(item.query, RETRIEVAL_K);
             const topFiveIds = topK.slice(0, 5).map((c) => c.chunkId);
             const { pinpointPrecision } = scorePinpoint(
               topFiveIds,

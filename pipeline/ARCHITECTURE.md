@@ -13,7 +13,8 @@ flowchart TD
     subgraph G[pipeline/graph.ts — StateGraph]
         direction TB
         S[__start__] --> R[retrieve]
-        R --> GN[generate]
+        R --> CF[citation-follow]
+        CF --> GN[generate]
         GN --> E[__end__]
     end
 
@@ -23,6 +24,12 @@ flowchart TD
         direction TB
         R1[searchRecords<br/>topK=5, integrated embedding] --> R2[Hydrate ChunkMetadata<br/>from flat hit.fields]
         R2 --> R3["Retrieval[]<br/>chunkId · text · score · metadata"]
+    end
+
+    subgraph CF[pipeline/nodes/citation-follow.ts]
+        direction TB
+        CF1[Extract citation_ids<br/>from retrieved chunk text] --> CF2["searchRecords<br/>filter: citation_id ∈ cited<br/>topK=5"]
+        CF2 --> CF3[Dedupe vs prior retrievals<br/>→ append via reducer]
     end
 
     subgraph GN[pipeline/nodes/generate.ts]
@@ -35,6 +42,7 @@ flowchart TD
     O --> RT[route.ts<br/>JSON response]
 
     P[(Pinecone<br/>compliance-copilot)] -.->|searchRecords| R1
+    P -.->|searchRecords w/ filter| CF2
 ```
 
 ---
@@ -59,6 +67,7 @@ flowchart TD
 | `graph.ts` | Wires the `StateGraph` (`retrieve → generate`), constructs the singleton Pinecone + OpenAI clients at import time, exports a compiled graph. |
 | `state.ts` | Declares `GraphStateAnnotation` and exports the derived `GraphState` type. |
 | `nodes/retrieve.ts` | Pinecone-only I/O. Calls `searchRecords` (integrated-embedding API) and rebuilds `ChunkMetadata` from the flat record fields stored at ingest time. |
+| `nodes/citation-follow.ts` | Pinecone-only I/O. Regex-extracts canonical `citation_id`s from the retrieved chunk text (e.g. `17 CFR 240.17a-4` → `17-CFR-240.17a-4`, `Reg SHO Rule 203` → `17-CFR-242.203`, `31 CFR 1023.220` → `31-CFR-Part-1023`), then re-queries with a `citation_id ∈ {…}` filter and the original user query for similarity ranking. New chunks merge via the append reducer; bare `Rule N` and already-retrieved docs are skipped. |
 | `nodes/generate.ts` | OpenAI-only I/O. Builds the grounded prompt, parses `[^N]` markers from the model's reply into `Citation[]`. |
 
 ---
@@ -88,5 +97,5 @@ flowchart TD
 The graph is intentionally linear today, but the shape supports the planned post-MVP nodes without rewiring existing nodes:
 
 - **Classifier before retrieve** — `addConditionalEdges` from a new `classify` node to either `retrieve` or a direct `generate`.
-- **Multi-hop retrieve** — re-enter `retrieve` with a refined query; the append reducer on `retrievals` already supports accumulation.
+- **Iterative multi-hop** — re-enter `retrieve` with a refined query; the append reducer on `retrievals` already supports accumulation. `citation-follow` already does a single deterministic hop along regulatory cross-references; iterative LLM-driven decomposition is the next step.
 - **Self-eval / CRAG** — insert a `critique` node between `generate` and `__end__` with a conditional loop back to `retrieve`.

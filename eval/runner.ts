@@ -45,7 +45,6 @@ import {
   JUDGE_MODEL,
   RETRIEVAL_K,
   createOpenAI,
-  createPineconeIndex,
   judgeAnswer,
   loadBenchmark,
   mean,
@@ -288,7 +287,6 @@ async function main(): Promise<void> {
   );
   console.log();
 
-  const pineconeIndex = createPineconeIndex();
   const openai = createOpenAI();
 
   const results: ItemResult[] = [];
@@ -298,12 +296,10 @@ async function main(): Promise<void> {
       `[${i + 1}/${items.length}] ${item.query.slice(0, 60)}… `,
     );
 
-    // One direct Pinecone top-K query powers both retrieval metrics.
-    const topK = await retrieveForEval(
-      pineconeIndex,
-      item.query,
-      RETRIEVAL_K,
-    );
+    // The retrieval graph (retrieve → citation-follow) produces the chunks
+    // both retrieval-metric paths are scored against. The generate node is
+    // skipped, so no OpenAI call happens here.
+    const topK = await retrieveForEval(item.query, RETRIEVAL_K);
     const topFiveIds = topK.slice(0, 5).map((c) => c.chunkId);
     const { pinpointPrecision } = scorePinpoint(
       topFiveIds,
