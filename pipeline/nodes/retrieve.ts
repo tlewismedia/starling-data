@@ -3,6 +3,12 @@ import type { GraphState } from "../state";
 import type { ChunkMetadata, Retrieval } from "../../shared/types";
 import { logMemory } from "../instrument";
 
+// Oversample so the downstream rerank node has a real candidate pool to
+// promote from. The reranker can only reorder chunks that are present —
+// passing it 5 caps its impact at "best of 5." 20 strikes a balance
+// between recall headroom and rerank latency / context-window pressure.
+export const RETRIEVE_TOP_K = 20;
+
 const str = (f: Record<string, unknown>, key: string): string =>
   String(f[key] ?? "");
 
@@ -12,7 +18,7 @@ export function createRetrieveNode(
   return async (state: GraphState): Promise<Partial<GraphState>> => {
     const t0 = Date.now();
     const response = await vectorStore.searchRecords({
-      query: { topK: 5, inputs: { text: state.query } },
+      query: { topK: RETRIEVE_TOP_K, inputs: { text: state.query } },
     });
     const pineconeMs = Date.now() - t0;
 

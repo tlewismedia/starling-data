@@ -46,6 +46,40 @@ export const SMALL_FRAME_WORDS = 15;
 const HEADER_RE = /^(#{1,3})\s+(.+)$/;
 
 // ---------------------------------------------------------------------------
+// Chunk-text enrichment
+// ---------------------------------------------------------------------------
+
+/**
+ * Prepend a structural header to the chunk body so the embedder (and
+ * downstream reranker / BM25 / keyword matcher) sees the citation, doc title,
+ * and heading/paragraph path along with the prose. Empirically, dense
+ * retrieval over plain paragraph bodies is biased toward intros and
+ * overview chunks because conversational queries match those better
+ * superficially. Anchoring each chunk to its location in the regulation —
+ * `17 CFR 240.17a-4 — Records preservation > (f) Electronic storage media`
+ * — gives the embedder a cleaner topical signal and surfaces substantive
+ * paragraphs against the same query.
+ */
+export function enrichChunkText(body: string, metadata: ChunkMetadata): string {
+  const left = [metadata.citationIdDisplay, metadata.title]
+    .filter((s) => s && s.length > 0)
+    .join(" — ");
+
+  const right = [metadata.headingPath, metadata.paragraphPath]
+    .filter((s) => s && s.length > 0)
+    .join(" > ");
+
+  const header =
+    left.length > 0 && right.length > 0
+      ? `${left} > ${right}`
+      : left.length > 0
+        ? left
+        : right;
+
+  return header.length > 0 ? `${header}\n\n${body}` : body;
+}
+
+// ---------------------------------------------------------------------------
 // Sentence-level helpers (shared across modes)
 // ---------------------------------------------------------------------------
 
@@ -241,7 +275,11 @@ function chunkFallback(
         ? `${metadata.citationId}::${slug}::p${sectionChunkIndex}`
         : `${metadata.citationId}::${slug}`;
 
-      chunks.push({ id, text: chunkText, metadata: chunkMetadata });
+      chunks.push({
+        id,
+        text: enrichChunkText(chunkText, chunkMetadata),
+        metadata: chunkMetadata,
+      });
 
       globalIndex++;
       sectionChunkIndex++;
@@ -258,7 +296,7 @@ function chunkFallback(
     };
     chunks.push({
       id: `${metadata.citationId}::${slug}`,
-      text: body.trim(),
+      text: enrichChunkText(body.trim(), chunkMetadata),
       metadata: chunkMetadata,
     });
   }
@@ -586,22 +624,27 @@ function chunkRegulatory(
           : `${metadata.citationId}::${slug}`;
       }
 
-      chunks.push({ id, text: chunkText, metadata: chunkMetadata });
+      chunks.push({
+        id,
+        text: enrichChunkText(chunkText, chunkMetadata),
+        metadata: chunkMetadata,
+      });
       globalIndex++;
     }
   }
 
   if (chunks.length === 0 && body.trim().length > 0) {
     const slug = resolveSlug("", slugCounts);
+    const fallbackMetadata: ChunkMetadata = {
+      ...metadata,
+      headingPath: "",
+      paragraphPath: "",
+      chunkIndex: 0,
+    };
     chunks.push({
       id: `${metadata.citationId}::${slug}`,
-      text: body.trim(),
-      metadata: {
-        ...metadata,
-        headingPath: "",
-        paragraphPath: "",
-        chunkIndex: 0,
-      },
+      text: enrichChunkText(body.trim(), fallbackMetadata),
+      metadata: fallbackMetadata,
     });
   }
 

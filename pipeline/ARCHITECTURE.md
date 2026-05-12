@@ -14,7 +14,8 @@ flowchart TD
         direction TB
         S[__start__] --> R[retrieve]
         R --> CF[citation-follow]
-        CF --> GN[generate]
+        CF --> RR[rerank]
+        RR --> GN[generate]
         GN --> E[__end__]
     end
 
@@ -22,7 +23,7 @@ flowchart TD
 
     subgraph R[pipeline/nodes/retrieve.ts]
         direction TB
-        R1[searchRecords<br/>topK=5, integrated embedding] --> R2[Hydrate ChunkMetadata<br/>from flat hit.fields]
+        R1[searchRecords<br/>topK=20, integrated embedding] --> R2[Hydrate ChunkMetadata<br/>from flat hit.fields]
         R2 --> R3["Retrieval[]<br/>chunkId · text · score · metadata"]
     end
 
@@ -32,29 +33,37 @@ flowchart TD
         CF2 --> CF3[Dedupe vs prior retrievals<br/>→ append via reducer]
     end
 
+    subgraph RR[pipeline/nodes/rerank.ts]
+        direction TB
+        RR1["inference.rerank<br/>cross-encoder model"] --> RR2[Reorder Retrieval[]<br/>by relevance score]
+        RR2 --> RR3["rankedRetrievals<br/>(top-N, replace reducer)"]
+    end
+
     subgraph GN[pipeline/nodes/generate.ts]
         direction TB
         G1["Format context<br/>[^N] citation_id — title<br/>heading_path"] --> G2[OpenAI chat.completions<br/>gpt-4o-mini]
         G2 --> G3["Parse [^N] markers<br/>→ Citation[]"]
     end
 
-    E --> O["GraphState<br/>{ query, retrievals, answer, citations }"]
+    E --> O["GraphState<br/>{ query, retrievals, rankedRetrievals,<br/>answer, citations }"]
     O --> RT[route.ts<br/>JSON response]
 
     P[(Pinecone<br/>compliance-copilot)] -.->|searchRecords| R1
     P -.->|searchRecords w/ filter| CF2
+    P -.->|inference.rerank| RR1
 ```
 
 ---
 
 ## State
 
-`pipeline/state.ts` declares `GraphStateAnnotation`. The `retrievals` channel uses an **append reducer** (`(a, b) => [...a, ...b]`) so future multi-hop retrieval can accumulate hits across passes without overwriting.
+`pipeline/state.ts` declares `GraphStateAnnotation`. The `retrievals` channel uses an **append reducer** (`(a, b) => [...a, ...b]`) so `retrieve` and `citation-follow` can both contribute to the candidate pool without overwriting each other. The `rankedRetrievals` channel uses the default replace reducer and holds the reordered subset that `generate` (and the eval scorer) actually consume.
 
 | Channel | Type | Reducer | Set by |
 |---|---|---|---|
 | `query` | `string` | replace | input |
-| `retrievals` | `Retrieval[]` | append | `retrieve` |
+| `retrievals` | `Retrieval[]` | append | `retrieve`, `citation-follow` |
+| `rankedRetrievals` | `Retrieval[] \| undefined` | replace | `rerank` |
 | `answer` | `string \| undefined` | replace | `generate` |
 | `citations` | `Citation[] \| undefined` | replace | `generate` |
 
@@ -68,7 +77,8 @@ flowchart TD
 | `state.ts` | Declares `GraphStateAnnotation` and exports the derived `GraphState` type. |
 | `nodes/retrieve.ts` | Pinecone-only I/O. Calls `searchRecords` (integrated-embedding API) and rebuilds `ChunkMetadata` from the flat record fields stored at ingest time. |
 | `nodes/citation-follow.ts` | Pinecone-only I/O. Regex-extracts canonical `citation_id`s from the retrieved chunk text (e.g. `17 CFR 240.17a-4` → `17-CFR-240.17a-4`, `Reg SHO Rule 203` → `17-CFR-242.203`, `31 CFR 1023.220` → `31-CFR-Part-1023`), then re-queries with a `citation_id ∈ {…}` filter and the original user query for similarity ranking. New chunks merge via the append reducer; bare `Rule N` and already-retrieved docs are skipped. |
-| `nodes/generate.ts` | OpenAI-only I/O. Builds the grounded prompt, parses `[^N]` markers from the model's reply into `Citation[]`. |
+| `nodes/rerank.ts` | Pinecone-only I/O. Calls `pinecone.inference.rerank` with a hosted cross-encoder (`bge-reranker-v2-m3` by default) over the full candidate pool and writes the reordered top-N to `rankedRetrievals`. A rerank-API failure is non-fatal: the node returns an empty partial state, leaving `rankedRetrievals` unset so downstream readers fall back to the unranked candidate pool. |
+| `nodes/generate.ts` | OpenAI-only I/O. Reads `rankedRetrievals` (falling back to `retrievals` when rerank was skipped), builds the grounded prompt, parses `[^N]` markers from the model's reply into `Citation[]`. |
 
 ---
 

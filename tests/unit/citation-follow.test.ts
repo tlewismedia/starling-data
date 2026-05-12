@@ -54,6 +54,7 @@ function makeState(overrides: Partial<GraphState> = {}): GraphState {
   return {
     query: "test query",
     retrievals: [],
+    rankedRetrievals: undefined,
     answer: undefined,
     citations: undefined,
     ...overrides,

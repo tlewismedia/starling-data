@@ -49,20 +49,33 @@ import {
   loadBenchmark,
   mean,
   retrieveForEval,
+  retrieveForEvalStaged,
   scoreKeywordMetrics,
   scorePinpoint,
   type JudgeResult,
+  type StagedRetrieval,
 } from "./core";
+
+// EVAL_DIAGNOSTICS=1 toggles a side report at
+// `eval/results/<date>-<sha>-diagnostics.md` that, for every item with
+// MRR below DIAGNOSTIC_MRR_THRESHOLD, dumps the chunks each pipeline stage
+// produced and labels each expected chunk with where it landed. Used to
+// distinguish recall failures (chunk never made the candidate pool) from
+// rerank failures (chunk was in the pool but pushed below the cut).
+const DIAGNOSTICS = process.env["EVAL_DIAGNOSTICS"] === "1";
+const DIAGNOSTIC_MRR_THRESHOLD = 0.5;
 
 interface ItemResult {
   query: string;
   category: string;
+  expectedChunkIds: string[];
   pinpointPrecision: number;
   mrr: number;
   ndcg: number;
   keywordCoverage: number;
   judge?: JudgeResult;
   answer: string;
+  staged?: StagedRetrieval;
 }
 
 // ---------------------------------------------------------------------------
@@ -87,6 +100,171 @@ function fmt(n: number, digits = 2): string {
 
 function fmtPct(n: number): string {
   return `${(n * 100).toFixed(0)}%`;
+}
+
+// ---------------------------------------------------------------------------
+// Diagnostic report (only when EVAL_DIAGNOSTICS=1)
+// ---------------------------------------------------------------------------
+
+type ChunkVerdict =
+  | { kind: "found_top"; rank: number }
+  | { kind: "rerank_dropped"; stage: "retrieve" | "citation-follow"; rank: number }
+  | { kind: "recall_fail" };
+
+function classifyExpected(
+  expected: string,
+  staged: StagedRetrieval,
+  rerankedTopK: number,
+): ChunkVerdict {
+  const rerankedSlice = staged.rerankedStage.slice(0, rerankedTopK);
+  const rerankedRank = rerankedSlice.findIndex((r) => r.chunkId === expected);
+  if (rerankedRank !== -1) {
+    return { kind: "found_top", rank: rerankedRank + 1 };
+  }
+  const retrieveRank = staged.retrieveStage.findIndex(
+    (r) => r.chunkId === expected,
+  );
+  if (retrieveRank !== -1) {
+    return {
+      kind: "rerank_dropped",
+      stage: "retrieve",
+      rank: retrieveRank + 1,
+    };
+  }
+  const followRank = staged.citationFollowStage.findIndex(
+    (r) => r.chunkId === expected,
+  );
+  if (followRank !== -1) {
+    return {
+      kind: "rerank_dropped",
+      stage: "citation-follow",
+      rank: followRank + 1,
+    };
+  }
+  return { kind: "recall_fail" };
+}
+
+// One-line per-item verdict label combining the per-chunk classifications.
+function summariseVerdicts(verdicts: ChunkVerdict[]): string {
+  if (verdicts.every((v) => v.kind === "found_top")) return "ALL_FOUND";
+  if (verdicts.some((v) => v.kind === "recall_fail")) return "RECALL_FAIL";
+  return "RERANK_DROPPED";
+}
+
+function formatChunkList(
+  chunks: { chunkId: string }[],
+  expectedMap: Map<string, string>,
+  limit?: number,
+): string {
+  const slice = limit ? chunks.slice(0, limit) : chunks;
+  const lines: string[] = [];
+  for (const [i, c] of slice.entries()) {
+    const marker = expectedMap.get(c.chunkId);
+    const annot = marker ? `  ← ${marker}` : "";
+    lines.push(`  ${String(i + 1).padStart(2, " ")}. ${c.chunkId}${annot}`);
+  }
+  return lines.join("\n");
+}
+
+function buildDiagnosticReport(
+  results: ItemResult[],
+  threshold: number,
+): string {
+  const failing = results
+    .map((r, i) => ({ r, i }))
+    .filter(({ r }) => r.staged && r.mrr < threshold);
+
+  const lines: string[] = [];
+  const sha = gitShortSha();
+  const date = isoDate();
+  lines.push(`# Eval diagnostics — ${date} (${sha})`);
+  lines.push("");
+  lines.push(
+    `Items below MRR ${threshold} get a per-stage chunk dump. Verdicts:`,
+  );
+  lines.push("");
+  lines.push(
+    "- **ALL_FOUND** — every expected chunk is in the post-rerank top-K. Score is low because keywords are spread across many chunks or rank positions, not because retrieval lost anything.",
+  );
+  lines.push(
+    "- **RERANK_DROPPED** — at least one expected chunk was in the candidate pool (retrieve or citation-follow output) but rerank pushed it out of the top-K. Suggests trying a different reranker model or richer chunk text fed to rerank.",
+  );
+  lines.push(
+    "- **RECALL_FAIL** — at least one expected chunk never made the candidate pool. Reranker can't help. Suggests hybrid search (BM25 + dense), bigger oversample, or richer chunk text at index time.",
+  );
+  lines.push("");
+
+  if (failing.length === 0) {
+    lines.push(`No items below the MRR ${threshold} threshold.`);
+    return lines.join("\n") + "\n";
+  }
+
+  for (const { r, i } of failing) {
+    const expectedMap = new Map<string, string>();
+    r.expectedChunkIds.forEach((id, idx) => {
+      expectedMap.set(id, `EXPECT-${String.fromCharCode(65 + idx)}`);
+    });
+    const verdicts = r.expectedChunkIds.map((id) =>
+      classifyExpected(id, r.staged!, RETRIEVAL_K),
+    );
+    const verdict = summariseVerdicts(verdicts);
+
+    lines.push(
+      `### #${i + 1} — ${r.category} — MRR ${fmt(r.mrr, 2)} · pin ${fmt(r.pinpointPrecision, 2)} · kw ${fmtPct(r.keywordCoverage)} — **${verdict}**`,
+    );
+    lines.push("");
+    lines.push(`**Query:** ${r.query}`);
+    lines.push("");
+
+    lines.push("**Expected chunks:**");
+    r.expectedChunkIds.forEach((id, idx) => {
+      const v = verdicts[idx];
+      let where: string;
+      switch (v.kind) {
+        case "found_top":
+          where = `found in reranked top-${RETRIEVAL_K} at rank ${v.rank}`;
+          break;
+        case "rerank_dropped":
+          where = `was in ${v.stage} stage at rank ${v.rank}, dropped by rerank`;
+          break;
+        case "recall_fail":
+          where = `NEVER appeared in any stage (recall failure)`;
+          break;
+      }
+      lines.push(`- **${expectedMap.get(id)}** \`${id}\` — ${where}`);
+    });
+    lines.push("");
+
+    lines.push(
+      `**Stage 1 — retrieve top-${r.staged!.retrieveStage.length}:**`,
+    );
+    lines.push("```");
+    lines.push(formatChunkList(r.staged!.retrieveStage, expectedMap));
+    lines.push("```");
+    lines.push("");
+
+    lines.push(
+      `**Stage 2 — citation-follow added (${r.staged!.citationFollowStage.length}):**`,
+    );
+    if (r.staged!.citationFollowStage.length === 0) {
+      lines.push("(none — no extracted citations or all already in pool)");
+    } else {
+      lines.push("```");
+      lines.push(formatChunkList(r.staged!.citationFollowStage, expectedMap));
+      lines.push("```");
+    }
+    lines.push("");
+
+    lines.push(`**Stage 3 — rerank top-${RETRIEVAL_K}:**`);
+    lines.push("```");
+    lines.push(
+      formatChunkList(r.staged!.rerankedStage, expectedMap, RETRIEVAL_K),
+    );
+    lines.push("```");
+    lines.push("");
+  }
+
+  return lines.join("\n") + "\n";
 }
 
 function buildReport(results: ItemResult[], skipJudge: boolean): string {
@@ -296,10 +474,23 @@ async function main(): Promise<void> {
       `[${i + 1}/${items.length}] ${item.query.slice(0, 60)}… `,
     );
 
-    // The retrieval graph (retrieve → citation-follow) produces the chunks
-    // both retrieval-metric paths are scored against. The generate node is
-    // skipped, so no OpenAI call happens here.
-    const topK = await retrieveForEval(item.query, RETRIEVAL_K);
+    // The retrieval graph (retrieve → citation-follow → rerank) produces the
+    // chunks both retrieval-metric paths are scored against. The generate
+    // node is skipped, so no OpenAI call happens here.
+    //
+    // Diagnostic mode runs the same graph but exposes each stage's output
+    // for the side report; the post-rerank chunks are still what gets scored.
+    let topK;
+    let staged: StagedRetrieval | undefined;
+    if (DIAGNOSTICS) {
+      staged = await retrieveForEvalStaged(item.query);
+      topK = staged.rerankedStage.slice(0, RETRIEVAL_K).map((r) => ({
+        chunkId: r.chunkId,
+        text: r.text,
+      }));
+    } else {
+      topK = await retrieveForEval(item.query, RETRIEVAL_K);
+    }
     const topFiveIds = topK.slice(0, 5).map((c) => c.chunkId);
     const { pinpointPrecision } = scorePinpoint(
       topFiveIds,
@@ -331,12 +522,14 @@ async function main(): Promise<void> {
     results.push({
       query: item.query,
       category: item.category,
+      expectedChunkIds: item.expected_chunk_ids,
       pinpointPrecision,
       mrr,
       ndcg,
       keywordCoverage,
       judge,
       answer,
+      staged,
     });
 
     const summary = skipJudge
@@ -358,6 +551,16 @@ async function main(): Promise<void> {
   mkdirSync(dirname(outPath), { recursive: true });
   writeFileSync(outPath, report);
   console.log(`Wrote ${outPath}`);
+
+  if (DIAGNOSTICS) {
+    const diagReport = buildDiagnosticReport(results, DIAGNOSTIC_MRR_THRESHOLD);
+    const diagPath = resolve(
+      process.cwd(),
+      `eval/results/${isoDate()}-${gitShortSha()}-diagnostics.md`,
+    );
+    writeFileSync(diagPath, diagReport);
+    console.log(`Wrote ${diagPath}`);
+  }
 }
 
 main().catch((err) => {

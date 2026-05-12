@@ -16,6 +16,8 @@ import OpenAI from "openai";
 import { zodResponseFormat } from "openai/helpers/zod";
 import { Pinecone } from "@pinecone-database/pinecone";
 import { getRetrievalGraph } from "../pipeline/graph";
+import { RETRIEVE_TOP_K } from "../pipeline/nodes/retrieve";
+import type { Retrieval } from "../shared/types";
 
 export const RETRIEVAL_K = 10;
 export const JUDGE_MODEL =
@@ -75,25 +77,57 @@ export function loadBenchmark(path: string): BenchmarkItem[] {
 // ---------------------------------------------------------------------------
 
 /**
- * Run the production retrieval pipeline (retrieve → citation-follow) for one
- * query and return its chunks. The generate node is intentionally not part of
- * this path, so the eval can score what the pipeline actually surfaces without
- * paying for an OpenAI generation call per benchmark item.
+ * Run the production retrieval pipeline (retrieve → citation-follow → rerank)
+ * for one query and return its chunks. The generate node is intentionally not
+ * part of this path, so the eval can score what the pipeline actually surfaces
+ * without paying for an OpenAI generation call per benchmark item.
  *
- * The `k` cap is applied client-side: the retrieve node already topK-bounds
- * its own Pinecone call (5) and citation-follow caps its hop (FOLLOW_TOP_K),
- * so the merged set is naturally ≤ 10. Slicing to `k` enforces the metric's
- * declared horizon (RETRIEVAL_K).
+ * Prefers the post-rerank ordering. Falls back to the candidate pool if rerank
+ * was skipped or its API call failed (see pipeline/nodes/rerank.ts) so a
+ * single rerank outage doesn't blank the metrics.
  */
 export async function retrieveForEval(
   query: string,
   k: number,
 ): Promise<EvalChunk[]> {
   const state = await getRetrievalGraph().invoke({ query });
-  return state.retrievals.slice(0, k).map((r) => ({
+  const chunks = state.rankedRetrievals ?? state.retrievals;
+  return chunks.slice(0, k).map((r) => ({
     chunkId: r.chunkId,
     text: r.text,
   }));
+}
+
+// ---------------------------------------------------------------------------
+// Diagnostic-mode retrieval
+// ---------------------------------------------------------------------------
+
+/**
+ * Same call as `retrieveForEval` but exposes each pipeline stage separately
+ * so the eval runner can diagnose where a failing item went wrong.
+ *
+ * Stage attribution: the retrieve node always returns up to `RETRIEVE_TOP_K`
+ * chunks first; citation-follow then appends its hits. So the first
+ * `RETRIEVE_TOP_K` entries of `state.retrievals` are retrieve's contribution
+ * and the remainder is citation-follow's. (citation-follow runs after
+ * retrieve and the state reducer is append.)
+ */
+export interface StagedRetrieval {
+  retrieveStage: Retrieval[];
+  citationFollowStage: Retrieval[];
+  rerankedStage: Retrieval[];
+}
+
+export async function retrieveForEvalStaged(
+  query: string,
+): Promise<StagedRetrieval> {
+  const state = await getRetrievalGraph().invoke({ query });
+  const split = Math.min(state.retrievals.length, RETRIEVE_TOP_K);
+  return {
+    retrieveStage: state.retrievals.slice(0, split),
+    citationFollowStage: state.retrievals.slice(split),
+    rerankedStage: state.rankedRetrievals ?? state.retrievals,
+  };
 }
 
 // ---------------------------------------------------------------------------

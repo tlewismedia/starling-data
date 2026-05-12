@@ -10,7 +10,7 @@
  */
 
 import { describe, it, expect } from "vitest";
-import { chunkDocument } from "../../ingest/chunk";
+import { chunkDocument, enrichChunkText } from "../../ingest/chunk";
 import type { ChunkMetadata } from "../../shared/types";
 
 // ---------------------------------------------------------------------------
@@ -525,5 +525,73 @@ describe("Regulatory mode: SMALL_FRAME_WORDS constant", () => {
   it("is exported with the documented default value", async () => {
     const mod = await import("../../ingest/chunk");
     expect(mod.SMALL_FRAME_WORDS).toBe(15);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// enrichChunkText: structural header prepended to every emitted chunk
+// ---------------------------------------------------------------------------
+
+describe("enrichChunkText", () => {
+  const meta = (overrides: Partial<ChunkMetadata> = {}): ChunkMetadata => ({
+    title: "Records preservation",
+    source: "SEC",
+    authority: "SEC",
+    citationId: "17-CFR-240.17a-4",
+    citationIdDisplay: "17 CFR 240.17a-4",
+    jurisdiction: "US-Federal",
+    docType: "regulation",
+    effectiveDate: "2024-01-01",
+    sourceUrl: "https://example.com",
+    versionStatus: "current",
+    topicTags: [],
+    headingPath: "§ 240.17a-4 > (f) Electronic storage media",
+    paragraphPath: "(f)",
+    chunkIndex: 0,
+    ...overrides,
+  });
+
+  it("prepends citation, title, headingPath, and paragraphPath to the body", () => {
+    const out = enrichChunkText("Records may be preserved electronically…", meta());
+    expect(out.startsWith(
+      "17 CFR 240.17a-4 — Records preservation > § 240.17a-4 > (f) Electronic storage media > (f)",
+    )).toBe(true);
+    expect(out).toContain("Records may be preserved electronically…");
+    expect(out).toContain("\n\n");
+  });
+
+  it("omits the path segment when both heading and paragraph paths are empty", () => {
+    const out = enrichChunkText("body text", meta({ headingPath: "", paragraphPath: "" }));
+    expect(out).toBe("17 CFR 240.17a-4 — Records preservation\n\nbody text");
+  });
+
+  it("omits the citation/title segment when both are empty", () => {
+    const out = enrichChunkText("body text", meta({
+      citationIdDisplay: "",
+      title: "",
+    }));
+    expect(out).toBe(
+      "§ 240.17a-4 > (f) Electronic storage media > (f)\n\nbody text",
+    );
+  });
+
+  it("returns the body unchanged when no header parts are available", () => {
+    const out = enrichChunkText("body text", meta({
+      citationIdDisplay: "",
+      title: "",
+      headingPath: "",
+      paragraphPath: "",
+    }));
+    expect(out).toBe("body text");
+  });
+
+  it("is wired into chunkDocument: emitted chunks start with the header", () => {
+    const chunks = chunkDocument(
+      "## (a) Top-level\n\nFirst paragraph body.\n\n## (b) Second\n\nSecond paragraph body.",
+      BASE_METADATA,
+    );
+    for (const c of chunks) {
+      expect(c.text.startsWith(BASE_METADATA.citationIdDisplay)).toBe(true);
+    }
   });
 });

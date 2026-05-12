@@ -4,6 +4,7 @@ import OpenAI from "openai";
 import { GraphStateAnnotation } from "./state";
 import { createRetrieveNode } from "./nodes/retrieve";
 import { createCitationFollowNode } from "./nodes/citation-follow";
+import { createRerankNode } from "./nodes/rerank";
 import { createGenerateNode } from "./nodes/generate";
 import { bumpBuild, logMemory } from "./instrument";
 
@@ -14,31 +15,40 @@ type Pipeline = {
 };
 
 function compileFullGraph(
+  pinecone: Pinecone,
   vectorStore: ReturnType<Pinecone["index"]>,
   openai: OpenAI,
 ) {
   return new StateGraph(GraphStateAnnotation)
     .addNode("retrieve", createRetrieveNode(vectorStore))
     .addNode("citation-follow", createCitationFollowNode(vectorStore))
+    .addNode("rerank", createRerankNode(pinecone))
     .addNode("generate", createGenerateNode(openai))
     .addEdge("__start__", "retrieve")
     .addEdge("retrieve", "citation-follow")
-    .addEdge("citation-follow", "generate")
+    .addEdge("citation-follow", "rerank")
+    .addEdge("rerank", "generate")
     .addEdge("generate", "__end__")
     .compile();
 }
 
-// Retrieval-only graph: same retrieve + citation-follow nodes, no generate.
-// Used by the eval (and the streaming retrieval-metrics endpoint) so chunks
-// scored by the metrics are exactly what the production pipeline assembles —
-// without paying for an OpenAI generation call on every benchmark item.
-function compileRetrievalGraph(vectorStore: ReturnType<Pinecone["index"]>) {
+// Retrieval-only graph: same retrieve → citation-follow → rerank chain
+// without the generate node. Used by the eval (and the streaming retrieval
+// endpoint) so chunks scored by the metrics are exactly what the production
+// pipeline assembles — without paying for an OpenAI generation call on
+// every benchmark item.
+function compileRetrievalGraph(
+  pinecone: Pinecone,
+  vectorStore: ReturnType<Pinecone["index"]>,
+) {
   return new StateGraph(GraphStateAnnotation)
     .addNode("retrieve", createRetrieveNode(vectorStore))
     .addNode("citation-follow", createCitationFollowNode(vectorStore))
+    .addNode("rerank", createRerankNode(pinecone))
     .addEdge("__start__", "retrieve")
     .addEdge("retrieve", "citation-follow")
-    .addEdge("citation-follow", "__end__")
+    .addEdge("citation-follow", "rerank")
+    .addEdge("rerank", "__end__")
     .compile();
 }
 
@@ -51,12 +61,12 @@ function buildPipeline(): Pipeline {
         `globalThis cache missed — likely a new worker or VM context.`,
     );
   }
-  const vectorStore = new Pinecone({ apiKey: process.env.PINECONE_API_KEY! })
-    .index(process.env.PINECONE_INDEX!);
+  const pinecone = new Pinecone({ apiKey: process.env.PINECONE_API_KEY! });
+  const vectorStore = pinecone.index(process.env.PINECONE_INDEX!);
   const openai = new OpenAI();
   return {
-    graph: compileFullGraph(vectorStore, openai),
-    retrievalGraph: compileRetrievalGraph(vectorStore),
+    graph: compileFullGraph(pinecone, vectorStore, openai),
+    retrievalGraph: compileRetrievalGraph(pinecone, vectorStore),
     openai,
   };
 }

@@ -31,8 +31,8 @@
     - "17-CFR-242.203::(b)(2)(i)::p0"
   keywords:
     - "bona-fide market making"
-    - "market maker"
     - "does not apply"
+    - "Exceptions"
   reference_answer: |
     Under Reg SHO Rule 203(b)(2), the locate requirement does not apply to
     short sales by a broker-dealer in connection with bona-fide market-making
@@ -267,15 +267,15 @@
     - "FINRA-AWC-2023056789201::finra-office-of-hearing-officers-iv.-facts-and-violative-conduct-a.-rule-5310-best-execution"
   keywords:
     - "Rule 605"
-    - "security-by-security"
-    - "order-size"
+    - "per-order-type"
+    - "per-order-size"
     - "payment for order flow"
     - "boilerplate"
   reference_answer: |
     The AWC found the firm violated FINRA Rule 5310 because its best-execution
     committee relied on aggregate Rule 605 statistics from the receiving
-    venues without analyzing its own customer order flow on a security-by-
-    security, order-type, and order-size basis, did not compare execution
+    venues without analyzing its own customer order flow on a per-venue,
+    per-order-type, or per-order-size basis, did not compare execution
     quality across venues, did not evaluate whether payment-for-order-flow
     influenced routing, and did not document substantive findings beyond a
     boilerplate "acceptable execution quality" conclusion.
@@ -538,11 +538,12 @@
     - "17-CFR-242.200::(d)::p0"
     - "17-CFR-242.200::(f)::p0"
   keywords:
-    - "net long"
+    - "Aggregation unit"
     - "trading unit"
+    - "trading objective"
     - "independent"
-    - "documented"
-    - "objective"
+    - "documenting"
+    - "separately"
   reference_answer: |
     Under Reg SHO Rule 200(c) and (d), a person owns a security only to the
     extent of a net-long position. A broker-dealer may treat aggregation

@@ -11,6 +11,7 @@ function makeState(overrides: Partial<GraphState> = {}): GraphState {
   return {
     query: "What are the disclosure requirements?",
     retrievals: [],
+    rankedRetrievals: undefined,
     answer: undefined,
     citations: undefined,
     ...overrides,

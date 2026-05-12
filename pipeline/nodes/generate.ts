@@ -1,6 +1,6 @@
 import OpenAI from "openai";
 import type { GraphState } from "../state";
-import type { Citation } from "../../shared/types";
+import type { Citation, Retrieval } from "../../shared/types";
 import { logMemory } from "../instrument";
 
 const SYSTEM_PROMPT = `You are a compliance assistant. Answer questions using ONLY the provided source chunks below.
@@ -11,11 +11,19 @@ Never fabricate information or cite sources not provided to you.`;
 
 const MODEL = "gpt-4o-mini";
 
-function formatContext(state: GraphState): string {
-  if (state.retrievals.length === 0) {
+// Prefer the reranked set when present; fall back to the candidate pool
+// if the rerank node was skipped or failed (see pipeline/nodes/rerank.ts).
+// Both formatContext and renumberCitations must operate on the same array:
+// the model's [^N] markers refer to position N in whatever was shown to it.
+function chunksForPrompt(state: GraphState): Retrieval[] {
+  return state.rankedRetrievals ?? state.retrievals;
+}
+
+function formatContext(chunks: Retrieval[]): string {
+  if (chunks.length === 0) {
     return "(No source chunks available.)";
   }
-  return state.retrievals
+  return chunks
     .map((r, i) => {
       const m = r.metadata;
       const header = m
@@ -28,7 +36,7 @@ function formatContext(state: GraphState): string {
 
 function renumberCitations(
   answer: string,
-  state: GraphState,
+  chunks: Retrieval[],
 ): { answer: string; citations: Citation[] } {
   const regex = /\[\^(\d+)\]/g;
   const orderFirstSeen: number[] = [];
@@ -36,7 +44,7 @@ function renumberCitations(
   let match: RegExpExecArray | null;
   while ((match = regex.exec(answer)) !== null) {
     const original = parseInt(match[1], 10);
-    if (original < 1 || original > state.retrievals.length) continue;
+    if (original < 1 || original > chunks.length) continue;
     if (!remap.has(original)) {
       remap.set(original, orderFirstSeen.length + 1);
       orderFirstSeen.push(original);
@@ -50,7 +58,7 @@ function renumberCitations(
   });
 
   const citations: Citation[] = orderFirstSeen.map((original, i) => ({
-    chunkId: state.retrievals[original - 1].chunkId,
+    chunkId: chunks[original - 1].chunkId,
     marker: `[^${i + 1}]`,
   }));
 
@@ -59,7 +67,8 @@ function renumberCitations(
 
 export function createGenerateNode(openai: OpenAI) {
   return async (state: GraphState): Promise<Partial<GraphState>> => {
-    const context = formatContext(state);
+    const chunks = chunksForPrompt(state);
+    const context = formatContext(chunks);
     const userContent = `Source chunks:\n\n${context}\n\nQuestion: ${state.query}`;
 
     const t0 = Date.now();
@@ -74,7 +83,7 @@ export function createGenerateNode(openai: OpenAI) {
     const openaiMs = Date.now() - t0;
 
     const rawAnswer = response.choices[0]?.message?.content ?? "";
-    const { answer, citations } = renumberCitations(rawAnswer, state);
+    const { answer, citations } = renumberCitations(rawAnswer, chunks);
 
     logMemory("generate", {
       promptChars: userContent.length,
