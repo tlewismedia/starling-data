@@ -22,6 +22,7 @@ export function DashboardPage(): React.JSX.Element {
   const [query, setQuery] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [noCredits, setNoCredits] = useState(false);
   const [result, setResult] = useState<QueryResponse | null>(null);
   const [runMeta, setRunMeta] = useState<RunMeta | null>(null);
   const [submittedQuery, setSubmittedQuery] = useState<string>("");
@@ -41,6 +42,7 @@ export function DashboardPage(): React.JSX.Element {
     if (!query.trim() || loading) return;
     setLoading(true);
     setError(null);
+    setNoCredits(false);
     const startedAt = Date.now();
     const startedAtIso = new Date(startedAt).toISOString();
     const askedQuery = query;
@@ -52,7 +54,10 @@ export function DashboardPage(): React.JSX.Element {
       });
       const data = await res.json();
       if (!res.ok) {
-        setError((data as { error?: string }).error ?? "Something went wrong.");
+        const message =
+          (data as { error?: string }).error ?? "Something went wrong.";
+        setError(message);
+        setNoCredits((data as { code?: string }).code === "insufficient_credits");
         return;
       }
       setResult(data as QueryResponse);
@@ -126,7 +131,26 @@ export function DashboardPage(): React.JSX.Element {
           />
         </div>
 
-        {error && (
+        {error && noCredits && (
+          <Card className="space-y-2 border-[#b7791f] bg-[#fff7e6] p-5 text-[13px] text-[#8a5a00]">
+            <div className="font-semibold">OpenAI account has no credits remaining.</div>
+            <div>
+              This query could not be answered because the OpenAI account is out
+              of funds. Add credits at{" "}
+              <a
+                className="font-medium underline"
+                href="https://platform.openai.com/settings/organization/billing/"
+                target="_blank"
+                rel="noreferrer"
+              >
+                platform.openai.com/settings/organization/billing
+              </a>
+              , then try again.
+            </div>
+          </Card>
+        )}
+
+        {error && !noCredits && (
           <Card className="p-5 text-[13px] text-[#8b3a2f]">{error}</Card>
         )}
 

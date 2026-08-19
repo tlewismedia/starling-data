@@ -1,6 +1,37 @@
 import { describe, it, expect } from "vitest";
+import { isInsufficientCredits } from "../../app/api/query/route";
 
 const REFUSAL = "I cannot answer from the available sources.";
+
+describe("isInsufficientCredits", () => {
+  it("matches a credit_balance_exhausted 429 error", () => {
+    expect(
+      isInsufficientCredits({
+        status: 429,
+        code: "credit_balance_exhausted",
+        type: "insufficient_quota",
+      }),
+    ).toBe(true);
+  });
+
+  it("matches when only type is insufficient_quota", () => {
+    expect(isInsufficientCredits({ status: 429, type: "insufficient_quota" })).toBe(
+      true,
+    );
+  });
+
+  it("rejects a generic 429 (rate limit)", () => {
+    expect(
+      isInsufficientCredits({ status: 429, code: "rate_limit_exceeded" }),
+    ).toBe(false);
+  });
+
+  it("rejects non-429 errors and non-objects", () => {
+    expect(isInsufficientCredits({ status: 500, type: "server_error" })).toBe(false);
+    expect(isInsufficientCredits("429 no credits remaining")).toBe(false);
+    expect(isInsufficientCredits(null)).toBe(false);
+  });
+});
 
 describe.skipIf(!process.env.PINECONE_API_KEY || !process.env.OPENAI_API_KEY)(
   "/api/query route integration",

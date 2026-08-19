@@ -86,11 +86,35 @@ export async function POST(request: Request): Promise<NextResponse> {
     });
     console.error("[api/query] pipeline error:", err);
 
+    if (isInsufficientCredits(err)) {
+      return NextResponse.json(
+        {
+          error:
+            "OpenAI account has no credits remaining. Add credits at https://platform.openai.com/settings/organization/billing/.",
+          code: "insufficient_credits",
+        },
+        { status: 402 },
+      );
+    }
+
     return NextResponse.json(
       { error: "Internal pipeline error" },
       { status: 500 },
     );
   }
+}
+
+// OpenAI throws a 429 with code "credit_balance_exhausted" /
+// type "insufficient_quota" when the account runs out of credits. Detect on
+// the error shape (not the message string) so it stays robust if OpenAI
+// rewrites the wording.
+export function isInsufficientCredits(err: unknown): boolean {
+  if (typeof err !== "object" || err === null) return false;
+  const e = err as { status?: unknown; code?: unknown; type?: unknown };
+  return (
+    e.status === 429 &&
+    (e.code === "credit_balance_exhausted" || e.type === "insufficient_quota")
+  );
 }
 
 function withTimeout<T>(
